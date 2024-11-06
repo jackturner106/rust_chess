@@ -1,5 +1,8 @@
 use std::fmt;
 
+use player::players::{Human, Player};
+mod player;
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 enum Color {
     White,
@@ -33,6 +36,22 @@ struct Position {
     y: isize
 }
 
+impl ToString for Position {
+    fn to_string(&self) -> String {
+        match self.x {
+            0=>return "A".to_owned() + &(self.y + 1).to_string(),
+            1=>return "B".to_owned() + &(self.y + 1).to_string(),
+            2=>return "C".to_owned() + &(self.y + 1).to_string(),
+            3=>return "D".to_owned() + &(self.y + 1).to_string(),
+            4=>return "E".to_owned() + &(self.y + 1).to_string(),
+            5=>return "F".to_owned() + &(self.y + 1).to_string(),
+            6=>return "G".to_owned() + &(self.y + 1).to_string(),
+            7=>return "H".to_owned() + &(self.y + 1).to_string(),
+            _=>return String::from("")
+        }
+    }
+}
+
 impl Position {
 
     fn up(&self) -> Position {
@@ -55,12 +74,41 @@ impl Position {
         return self.x >= 0 && self.x <= 7 && self.y >= 0 && self.y <= 7;
     }
 
+    fn from_string(str: String) -> Position {
+        
+        let x: isize;
+        match str.chars().nth(0).unwrap() {
+            'A'=>x=0,
+            'B'=>x=0,
+            'C'=>x=0,
+            'D'=>x=0,
+            'E'=>x=0,
+            'F'=>x=0,
+            'G'=>x=0,
+            'H'=>x=0,
+            _=>x=0,
+        }
+
+        let y: isize = (str.chars().nth(1).unwrap().to_digit(10).unwrap() - 1).try_into().unwrap();
+
+        Position { x: x, y: y }
+    }
+
 }
 
 #[derive(Debug)]
 struct Move {
     start: Position,
     end: Position
+}
+
+impl fmt::Display for Move {
+    fn fmt(&self,  fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&self.start.to_string())?;
+        fmt.write_str("->")?;
+        fmt.write_str(&self.end.to_string())?;
+        Ok(())
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -85,14 +133,10 @@ impl ToString for Piece {
 
 #[derive(Clone, Copy)]
 struct Board {
-    H: [Piece; 8],
-    G: [Piece; 8],
-    F: [Piece; 8],
-    E: [Piece; 8],
-    D: [Piece; 8],
-    C: [Piece; 8],
-    B: [Piece; 8],
-    A: [Piece; 8],
+    // Stored as an array of arrays. The first array corresponds to the first row. 
+    // This means Y IS FIRST!! 
+    // board[y][x] is the correct way to access
+    board: [[Piece; 8]; 8]
 }
 
 impl fmt::Display for Board {
@@ -109,7 +153,7 @@ impl fmt::Display for Board {
 
 impl Board {
     fn vec(&self) -> Vec<[Piece; 8]> {
-        return vec![self.A, self.B, self.C, self.D, self.E, self.F, self.G, self.H];
+        return self.board.to_vec();
     }
 
     fn make_move(&mut self, new_move: Move) -> () {
@@ -118,31 +162,11 @@ impl Board {
     }
 
     fn put_piece(&mut self, pos: Position, piece: Piece) {
-        match pos.y {
-            0=>self.A[pos.x as usize] = piece,
-            1=>self.B[pos.x as usize] = piece,
-            2=>self.C[pos.x as usize] = piece,
-            3=>self.D[pos.x as usize] = piece,
-            4=>self.E[pos.x as usize] = piece,
-            5=>self.F[pos.x as usize] = piece,
-            6=>self.G[pos.x as usize] = piece,
-            7=>self.H[pos.x as usize] = piece,
-            _=>()
-        }
+        self.board[pos.y as usize][pos.x as usize] = piece;
     }
 
     fn get_piece(&self, pos: Position) -> Piece {
-        match pos.y {
-            0=>return self.A[pos.x as usize],
-            1=>return self.B[pos.x as usize],
-            2=>return self.C[pos.x as usize],
-            3=>return self.D[pos.x as usize],
-            4=>return self.E[pos.x as usize],
-            5=>return self.F[pos.x as usize],
-            6=>return self.G[pos.x as usize],
-            7=>return self.H[pos.x as usize],
-            _=>return Piece{piece_type:PieceType::Empty, color:Color::None},
-        }
+        return self.board[pos.y as usize][pos.x as usize];
     }
 
     fn get_moves(&self, pos: Position) -> Vec<Move> {
@@ -155,6 +179,25 @@ impl Board {
             PieceType::Pawn=>return self.get_pawn_moves(pos),
             PieceType::Empty=>return vec![],
         }
+    }
+
+    fn get_all_moves(&self, color: Color) -> Vec<Move> {
+        let mut moves: Vec<Move> = vec![];
+
+        let mut row = 0;
+        let mut col;
+        for r in self.board {
+            col = 0;
+            for p in r {
+                if p.color == color {
+                    moves.append(&mut self.get_moves(Position{x: col, y: row}));
+                }
+                col += 1;
+            }
+            row += 1
+        }
+
+        return moves;
     }
 
     fn get_bishop_moves(&self, pos: Position) -> Vec<Move> {
@@ -359,23 +402,25 @@ impl Board {
 
 fn make_board() -> Board {
     return Board {
-        H: [Piece {piece_type: PieceType::Rook, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Queen, color: Color::Black}, Piece {piece_type: PieceType::King, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Rook, color: Color::Black}],
-        G: [Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}],
-        F: [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
-        E: [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
-        D: [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
-        C: [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
-        B: [Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}],
-        A: [Piece {piece_type: PieceType::Rook, color: Color::White}, Piece {piece_type: PieceType::Knight, color: Color::White}, Piece {piece_type: PieceType::Bishop, color: Color::White}, Piece {piece_type: PieceType::Queen, color: Color::White}, Piece {piece_type: PieceType::King, color: Color::White}, Piece {piece_type: PieceType::Bishop, color: Color::White}, Piece {piece_type: PieceType::Knight, color: Color::White}, Piece {piece_type: PieceType::Rook, color: Color::White}]
+        board: [[Piece {piece_type: PieceType::Rook, color: Color::White}, Piece {piece_type: PieceType::Knight, color: Color::White}, Piece {piece_type: PieceType::Bishop, color: Color::White}, Piece {piece_type: PieceType::Queen, color: Color::White}, Piece {piece_type: PieceType::King, color: Color::White}, Piece {piece_type: PieceType::Bishop, color: Color::White}, Piece {piece_type: PieceType::Knight, color: Color::White}, Piece {piece_type: PieceType::Rook, color: Color::White}],
+        [Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}, Piece {piece_type: PieceType::Pawn, color: Color::White}],
+        [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
+        [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
+        [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
+        [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
+        [Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}],
+        [Piece {piece_type: PieceType::Rook, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Queen, color: Color::Black}, Piece {piece_type: PieceType::King, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Rook, color: Color::Black}]]
     };
 }
 
 fn main() {
     let mut board = make_board();
     println!("{board}");
-    let mut moves = board.get_moves(Position{x:4, y:0});
-    println!("{moves:?}");
-    board.make_move(Move{start:Position{x:4, y:0}, end:Position{x:0,y:2}});
-    moves = board.get_moves(Position{x:0, y:2});
-    println!("{moves:?}");
+    let mut moves = board.get_all_moves(Color::White);
+    for mv in moves {
+        println!("{mv}");
+    }
+    let hu: Human = Human{};
+    let mvt = hu.take_turn(board);
+    println!("{mvt}");
 }

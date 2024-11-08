@@ -1,6 +1,6 @@
 pub mod controller {
     
-    use crate::{player::players::{Human, Player}, Board, Color, Move};
+    use crate::{player::players::{Human, AI, Player}, Board, Color, Move};
 
     pub trait Controller {
         fn play_game(&self, board: Board) {
@@ -19,21 +19,21 @@ pub mod controller {
             let mut current_move: Move;
             let mut moves: Vec<Move>;
 
-            let p1: Human = Human{};
-            let p2: Human = Human{};
+            let mut p1: AI = AI::new();
+            let mut p2: Human = Human{};
 
             while turns < 100 {
 
                 println!("Current Board:");
                 println!("{board}");
 
-                println!("White to move. Avaliable moves are:");
-                moves = board.get_all_moves(Color::White);
-                for mv in moves {
-                    println!("{mv}");
-                }
+                println!("White to move. Asking the AI:");
+                //moves = board.get_all_moves(Color::White);
+                //for mv in moves {
+                //    println!("{mv}");
+                //}
 
-                current_move = p1.take_turn(board);
+                current_move = p1.take_turn(board, Color::White);
                 board.make_move(current_move);
                 println!("Got move {current_move}");
 
@@ -46,7 +46,7 @@ pub mod controller {
                     println!("{mv}");
                 }
 
-                current_move = p2.take_turn(board);
+                current_move = p2.take_turn(board, Color::Black);
                 board.make_move(current_move);
                 turns += 1;
                 

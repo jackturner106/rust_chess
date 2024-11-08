@@ -81,14 +81,14 @@ impl Position {
         
         let x: isize;
         match str.chars().nth(0).unwrap() {
-            'A'=>x=0,
-            'B'=>x=1,
-            'C'=>x=2,
-            'D'=>x=3,
-            'E'=>x=4,
-            'F'=>x=5,
-            'G'=>x=6,
-            'H'=>x=7,
+            'a'=>x=0,
+            'b'=>x=1,
+            'c'=>x=2,
+            'd'=>x=3,
+            'e'=>x=4,
+            'f'=>x=5,
+            'g'=>x=6,
+            'h'=>x=7,
             _=>x=0,
         }
 
@@ -131,6 +131,20 @@ impl ToString for Piece {
             PieceType::Pawn=>return if self.color == Color::White {String::from("♙")} else {String::from("♟")},
             PieceType::Empty=>return if self.color == Color::White {String::from(" ")} else {String::from(" ")},
            }
+    }
+}
+
+impl Piece {
+    fn points(&self) -> i8 {
+        match self.piece_type {
+            PieceType::Bishop=>return 3,
+            PieceType::Knight=>return 3,
+            PieceType::Rook=>return 5,
+            PieceType::King=>return 0,
+            PieceType::Queen=>return 9,
+            PieceType::Pawn=>return 1,
+            PieceType::Empty=>return 0,
+        };
     }
 }
 
@@ -318,7 +332,7 @@ impl Board {
                 moves.push(Move {start: pos, end: temp});
                 if temp.y == 2 {
                     let first_double: Position = temp.up();
-                    if first_double.validp() && self.get_piece(temp).piece_type == PieceType::Empty {
+                    if first_double.validp() && self.get_piece(first_double).piece_type == PieceType::Empty {
                         moves.push(Move {start: pos, end: first_double});
                     }
                 }
@@ -341,7 +355,7 @@ impl Board {
                 moves.push(Move {start: pos, end: temp});
                 if temp.y == 5 {
                     let first_double: Position = temp.down();
-                    if first_double.validp() && self.get_piece(temp).piece_type == PieceType::Empty {
+                    if first_double.validp() && self.get_piece(first_double).piece_type == PieceType::Empty {
                         moves.push(Move {start: pos, end: first_double});
                     }
                 }

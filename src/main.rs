@@ -3,6 +3,9 @@ use std::fmt;
 use player::players::{Human, Player};
 mod player;
 
+use controller::controller::{Controller, HumanGame};
+mod controller;
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 enum Color {
     White,
@@ -79,13 +82,13 @@ impl Position {
         let x: isize;
         match str.chars().nth(0).unwrap() {
             'A'=>x=0,
-            'B'=>x=0,
-            'C'=>x=0,
-            'D'=>x=0,
-            'E'=>x=0,
-            'F'=>x=0,
-            'G'=>x=0,
-            'H'=>x=0,
+            'B'=>x=1,
+            'C'=>x=2,
+            'D'=>x=3,
+            'E'=>x=4,
+            'F'=>x=5,
+            'G'=>x=6,
+            'H'=>x=7,
             _=>x=0,
         }
 
@@ -96,7 +99,7 @@ impl Position {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Move {
     start: Position,
     end: Position
@@ -120,12 +123,12 @@ struct Piece {
 impl ToString for Piece {
     fn to_string(&self) -> String {
         match self.piece_type{
-            PieceType::Bishop=>return if self.color == Color::White {String::from("b")} else {String::from("B")},
-            PieceType::Knight=>return if self.color == Color::White {String::from("h")} else {String::from("H")},
-            PieceType::Rook=>return if self.color == Color::White {String::from("r")} else {String::from("R")},
-            PieceType::King=>return if self.color == Color::White {String::from("k")} else {String::from("K")},
-            PieceType::Queen=>return if self.color == Color::White {String::from("q")} else {String::from("Q")},
-            PieceType::Pawn=>return if self.color == Color::White {String::from("p")} else {String::from("P")},
+            PieceType::Bishop=>return if self.color == Color::White {String::from("♗")} else {String::from("♝")},
+            PieceType::Knight=>return if self.color == Color::White {String::from("♘")} else {String::from("♞")},
+            PieceType::Rook=>return if self.color == Color::White {String::from("♖")} else {String::from("♜")},
+            PieceType::King=>return if self.color == Color::White {String::from("♔")} else {String::from("♚")},
+            PieceType::Queen=>return if self.color == Color::White {String::from("♕")} else {String::from("♛")},
+            PieceType::Pawn=>return if self.color == Color::White {String::from("♙")} else {String::from("♟")},
             PieceType::Empty=>return if self.color == Color::White {String::from(" ")} else {String::from(" ")},
            }
     }
@@ -141,12 +144,23 @@ struct Board {
 
 impl fmt::Display for Board {
     fn fmt(&self,  fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut flag: bool = false;
+        let mut l: u8 = 8;
         for b in self.vec().iter().rev() {
+            fmt.write_str(&(l.to_string() + " "))?;
             for i in 0..8 {
-                fmt.write_str(&b[i].to_string())?;
+
+                if flag {fmt.write_str("\x1b[40m")?;}
+                fmt.write_str(&(b[i].to_string() + " "))?;
+                if flag { fmt.write_str("\x1b[0m")?; }
+            
+                flag = !flag;
             }
             fmt.write_str("\n")?;
+            flag = !flag;
+            l -= 1;
         }
+        fmt.write_str("  A B C D E F G H")?;
         Ok(())
     }
 }
@@ -414,6 +428,7 @@ fn make_board() -> Board {
 }
 
 fn main() {
+    /* 
     let mut board = make_board();
     println!("{board}");
     let mut moves = board.get_all_moves(Color::White);
@@ -423,4 +438,9 @@ fn main() {
     let hu: Human = Human{};
     let mvt = hu.take_turn(board);
     println!("{mvt}");
+    */
+
+    let mut board = make_board();
+    let game = HumanGame{};
+    game.play_game(board);
 }

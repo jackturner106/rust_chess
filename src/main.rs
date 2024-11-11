@@ -33,7 +33,7 @@ enum PieceType {
     Empty,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct Position {
     x: isize,
     y: isize
@@ -66,11 +66,11 @@ impl Position {
     }
 
     fn left(&self) -> Position {
-        return Position{x: self.x + 1, y: self.y}
+        return Position{x: self.x - 1, y: self.y}
     }
 
     fn right(&self) -> Position {
-        return Position{x: self.x - 1, y: self.y}
+        return Position{x: self.x + 1, y: self.y}
     }
 
     fn validp(&self) -> bool {
@@ -99,7 +99,7 @@ impl Position {
 
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Move {
     start: Position,
     end: Position
@@ -111,6 +111,16 @@ impl fmt::Display for Move {
         fmt.write_str("->")?;
         fmt.write_str(&self.end.to_string())?;
         Ok(())
+    }
+}
+
+impl Move {
+    fn kingside_castlep(&self) -> bool {
+        return (self.start == Position{x:4,y:0} && self.end == Position{x:6,y:0}) || (self.start == Position{x:4,y:7} && self.end == Position{x:6,y:7});
+    }
+
+    fn queenside_castlep(&self) -> bool {
+        return (self.start == Position{x:4,y:0} && self.end == Position{x:2,y:0}) || (self.start == Position{x:4,y:7} && self.end == Position{x:2,y:7});
     }
 }
 
@@ -134,26 +144,16 @@ impl ToString for Piece {
     }
 }
 
-impl Piece {
-    fn points(&self) -> i8 {
-        match self.piece_type {
-            PieceType::Bishop=>return 3,
-            PieceType::Knight=>return 3,
-            PieceType::Rook=>return 5,
-            PieceType::King=>return 0,
-            PieceType::Queen=>return 9,
-            PieceType::Pawn=>return 1,
-            PieceType::Empty=>return 0,
-        };
-    }
-}
-
 #[derive(Clone, Copy)]
 struct Board {
     // Stored as an array of arrays. The first array corresponds to the first row. 
     // This means Y IS FIRST!! 
     // board[y][x] is the correct way to access
-    board: [[Piece; 8]; 8]
+    board: [[Piece; 8]; 8],
+    white_kingside: bool,
+    white_queenside: bool,
+    black_kingside: bool,
+    black_queenside: bool
 }
 
 impl fmt::Display for Board {
@@ -185,8 +185,39 @@ impl Board {
     }
 
     fn make_move(&mut self, new_move: Move) -> () {
+
+        let piece: Piece = self.get_piece(new_move.start);
+
+        if piece.color == Color::None {
+            return;
+        }
+
+        //if !(self.get_all_moves(piece.color).contains(&new_move)) {
+        //    return;
+        //}
+
         self.put_piece(new_move.end, self.get_piece(new_move.start));
         self.put_piece(new_move.start, Piece {piece_type: PieceType::Empty, color: Color::None});
+
+        if piece.piece_type == PieceType::King && (new_move.kingside_castlep() || new_move.queenside_castlep()) {
+            if piece.color == Color::White && new_move.kingside_castlep() {
+                self.white_kingside = false;
+                self.put_piece(Position{y:0,x:5}, self.get_piece(Position{y:0,x:7}));
+                self.put_piece(Position{y:0,x:7}, Piece {piece_type: PieceType::Empty, color: Color::None});
+            } else if piece.color == Color::White && new_move.queenside_castlep() {
+                self.white_queenside = false;
+                self.put_piece(Position{y:0,x:3}, self.get_piece(Position{y:0,x:0}));
+                self.put_piece(Position{y:0,x:0}, Piece {piece_type: PieceType::Empty, color: Color::None});
+            } else if piece.color == Color::Black && new_move.kingside_castlep() {
+                self.black_kingside = false;
+                self.put_piece(Position{y:7,x:5}, self.get_piece(Position{y:7,x:7}));
+                self.put_piece(Position{y:7,x:7}, Piece {piece_type: PieceType::Empty, color: Color::None});
+            }else if piece.color == Color::Black && new_move.queenside_castlep() {
+                self.black_queenside = false;
+                self.put_piece(Position{y:7,x:3}, self.get_piece(Position{y:7,x:0}));
+                self.put_piece(Position{y:7,x:0}, Piece {piece_type: PieceType::Empty, color: Color::None});
+            }
+        }
     }
 
     fn put_piece(&mut self, pos: Position, piece: Piece) {
@@ -296,6 +327,19 @@ impl Board {
                 }
                 board.make_move(Move{start:loc, end:pos});
             }
+        }
+
+        if me == Color::White && self.white_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
+            moves.push(Move{ start:pos, end: pos.right().right() });
+        }
+        if me == Color::White && self.white_queenside && pos.left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
+            moves.push(Move{ start:pos, end: pos.left().left() });
+        }
+        if me == Color::Black && self.black_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
+            moves.push(Move{ start:pos, end: pos.right().right() });
+        }
+        if me == Color::Black && self.black_queenside && pos.left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
+            moves.push(Move{ start:pos, end: pos.left().left() });
         }
 
         return moves;
@@ -437,7 +481,11 @@ fn make_board() -> Board {
         [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
         [Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}, Piece {piece_type: PieceType::Empty, color: Color::None}],
         [Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}, Piece {piece_type: PieceType::Pawn, color: Color::Black}],
-        [Piece {piece_type: PieceType::Rook, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Queen, color: Color::Black}, Piece {piece_type: PieceType::King, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Rook, color: Color::Black}]]
+        [Piece {piece_type: PieceType::Rook, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Queen, color: Color::Black}, Piece {piece_type: PieceType::King, color: Color::Black}, Piece {piece_type: PieceType::Bishop, color: Color::Black}, Piece {piece_type: PieceType::Knight, color: Color::Black}, Piece {piece_type: PieceType::Rook, color: Color::Black}]],
+        white_kingside: true,
+        black_kingside: true,
+        white_queenside: true,
+        black_queenside: true
     };
 }
 
@@ -454,7 +502,8 @@ fn main() {
     println!("{mvt}");
     */
 
-    let mut board = make_board();
+    let board = make_board();
     let game = HumanGame{};
     game.play_game(board);
+
 }

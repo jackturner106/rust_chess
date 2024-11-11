@@ -8,6 +8,8 @@ pub mod players {
     use crate::Position;
     use std::cmp;
     use std::io;
+    use std::thread;
+    use std::thread::JoinHandle;
     pub trait Player {
         fn take_turn(&mut self, board: Board, color: Color) -> Move;
     }
@@ -18,7 +20,7 @@ pub mod players {
 
     impl Player for Human {
         fn take_turn(&mut self, board: Board, color: Color) -> Move {
-            println!("Starting position:");
+            println!("Your Move:");
             let mut start = String::new();
 
             io::stdin()
@@ -45,16 +47,18 @@ pub mod players {
 
             let moves = board.get_all_moves(color);
             mv = moves[0];
+
             for mov in moves {
                 temp_board = board.clone();
                 temp_board.make_move(mov);
-                temp_score = self.alphabeta(temp_board, 3, -32768, 32767, false, color.opponent_color());
+                temp_score = self.alphabeta(temp_board, 5, -32768, 32767, false, color.opponent_color());
 
                 if temp_score > score {
                     mv = mov;
                     score = temp_score;
                 }
             }
+
             let evals:u64 = self.pos_evaluated;
             println!("Evaluted: {evals} ");
             println!("Best Position: {score}");
@@ -65,17 +69,72 @@ pub mod players {
 
     impl AI {
 
+        pub fn take_turn_threaded(&mut self, board: Board, color: Color) -> Move {
+            let mut mv: Move;
+            let mut score: i16 = -32768;
+            let mut temp_board;
+            self.pos_evaluated = 0;
+            let mut temp_score: i16;
+
+            let mut moves = board.get_all_moves(color);
+            mv = moves[0];
+            let moves2 = moves.split_off(moves.len()/2);
+
+            let handle: JoinHandle<(i16, Move, u64)> = thread::spawn(move || {
+                let mut thread_temp_board: Board;
+                let mut ai: AI = AI{pos_evaluated:0};
+                let mut thread_temp_score: i16;
+                let mut thread_score: i16 = -32768;
+                let mut thread_mv: Move = moves2[0];
+
+                for mov in moves2 {
+                    thread_temp_board = board.clone();
+                    thread_temp_board.make_move(mov);
+                    thread_temp_score = ai.alphabeta(thread_temp_board, 5, -32768, 32767, false, color.opponent_color());
+    
+                    if thread_temp_score > thread_score {
+                        thread_mv = mov;
+                        thread_score = thread_temp_score;
+                    }
+                }
+
+                return (thread_score, thread_mv, ai.pos_evaluated);
+            });
+
+            for mov in moves {
+                temp_board = board.clone();
+                temp_board.make_move(mov);
+                temp_score = self.alphabeta(temp_board, 5, -32768, 32767, false, color.opponent_color());
+
+                if temp_score > score {
+                    mv = mov;
+                    score = temp_score;
+                }
+            }
+
+            let res = handle.join();
+            let val = res.unwrap();
+            println!("thread: {val:?}");
+
+            let evals:u64 = self.pos_evaluated + val.2;
+            println!("Evaluted: {evals} ");
+            println!("Best Position: {score}");
+
+            return if val.0 > score {val.1} else {mv};
+        }
+
         pub fn new() -> AI {
             return AI { pos_evaluated: 0};
         }
 
         fn alphabeta(&mut self, board: Board, depth: u8, al: i16, be: i16, max: bool, color: Color) -> i16 {
 
+            self.pos_evaluated += 1;
+
             if depth == 0 {
                 return if max {self.evaluate(board, color)} else {self.evaluate(board, color) * -1};
             }
 
-            self.pos_evaluated += 1;
             let mut best_score: i16; 
             let mut cur_score: i16;
             let mut temp_board: Board;

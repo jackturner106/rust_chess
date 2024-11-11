@@ -1,6 +1,7 @@
 pub mod controller {
     
     use crate::{player::players::{Human, AI, Player}, Board, Color, Move};
+    use std::time::{Duration, Instant};
 
     pub trait Controller {
         fn play_game(&self, board: Board) {
@@ -18,6 +19,8 @@ pub mod controller {
             let mut current_turn: Color = Color::White;
             let mut current_move: Move;
             let mut moves: Vec<Move>;
+            let mut now: Instant;
+            let mut elapsed: Duration;
 
             let mut p1: AI = AI::new();
             let mut p2: Human = Human{};
@@ -32,8 +35,18 @@ pub mod controller {
                 //for mv in moves {
                 //    println!("{mv}");
                 //}
+                //now = Instant::now();
+                //current_move = p1.take_turn(board, Color::White);
+                //elapsed = now.elapsed();
+                //println!("Take Turn (no threads) took: {:.2?}", elapsed);
+                //println!("And got move {current_move}");
 
-                current_move = p1.take_turn(board, Color::White);
+                //now = Instant::now();
+                current_move = p1.take_turn_threaded(board, Color::White);
+                //elapsed = now.elapsed();
+                //println!("Take Turn (threads) took: {:.2?}", elapsed);
+                //println!("And got move {current_move}");
+
                 board.make_move(current_move);
                 println!("Got move {current_move}");
 

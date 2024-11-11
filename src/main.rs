@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{env, fmt};
 
 use player::players::{Human, Player};
 mod player;
@@ -332,13 +332,13 @@ impl Board {
         if me == Color::White && self.white_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
             moves.push(Move{ start:pos, end: pos.right().right() });
         }
-        if me == Color::White && self.white_queenside && pos.left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
+        if me == Color::White && self.white_queenside && pos.left().left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
             moves.push(Move{ start:pos, end: pos.left().left() });
         }
         if me == Color::Black && self.black_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
             moves.push(Move{ start:pos, end: pos.right().right() });
         }
-        if me == Color::Black && self.black_queenside && pos.left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
+        if me == Color::Black && self.black_queenside && pos.left().left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
             moves.push(Move{ start:pos, end: pos.left().left() });
         }
 
@@ -501,6 +501,7 @@ fn main() {
     let mvt = hu.take_turn(board);
     println!("{mvt}");
     */
+    env::set_var("RUST_BACKTRACE", "1");
 
     let board = make_board();
     let game = HumanGame{};

@@ -131,7 +131,10 @@ pub mod players {
 
             self.pos_evaluated += 1;
 
-            if depth == 0 {
+            if board.checkmatep(color) {
+                // This possible introduces a bug, could be just return -32768?
+                return if max {-32768} else {32767};
+            } else if depth == 0 {
                 return if max {self.evaluate(board, color)} else {self.evaluate(board, color) * -1};
             }
 
@@ -195,14 +198,16 @@ pub mod players {
         fn points(board: Board, color: Color) -> i16 {
             let mut points: i16 = 0;
             let mut piece: Piece;
+            let mut pos: Position;
 
             for i in 0..8 {
                 for l in 0..8 {
-                    piece = board.get_piece(Position{x:i,y:l});
+                    pos = Position{x:i,y:l};
+                    piece = board.get_piece(pos);
                     if piece.color == color {
-                        points += AI::piece_points(piece.piece_type)
+                        points += AI::piece_points(piece.piece_type, pos, color)
                     } else if piece.color != Color::None {
-                        points -= AI::piece_points(piece.piece_type);
+                        points -= AI::piece_points(piece.piece_type, pos, color);
                     }
                 }
             }
@@ -210,16 +215,33 @@ pub mod players {
             return points;
         }
 
-        fn piece_points(piece: PieceType) -> i16 {
+        fn piece_points(piece: PieceType, pos: Position, color: Color) -> i16 {
+
+            let pawn_pos: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 140, 140, 140, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100],
+                                            [100, 100, 100, 100, 100, 100, 100, 100]];
+
             match piece {
-                PieceType::Bishop=>return 3,
-                PieceType::Knight=>return 3,
-                PieceType::Rook=>return 5,
+                PieceType::Bishop=>return 300,
+                PieceType::Knight=>return 300,
+                PieceType::Rook=>return 500,
                 PieceType::King=>return 0,
-                PieceType::Queen=>return 9,
-                PieceType::Pawn=>return 1,
+                PieceType::Queen=>return 900,
+                PieceType::Pawn=>return AI::get_pos_points(pos, color, pawn_pos),
                 PieceType::Empty=>return 0,
             };
+        }
+
+        fn get_pos_points(pos: Position, color: Color, mut grid: [[i16; 8]; 8]) -> i16 {
+            if color == Color::White {
+                grid.reverse();
+            }
+            return grid[pos.y as usize][pos.x as usize];
         }
     }
 }

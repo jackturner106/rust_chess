@@ -256,7 +256,31 @@ impl Board {
             row += 1
         }
 
-        return moves;
+        return moves.into_iter().filter(|mv| {!self.move_results_in_checkp(*mv, color)}).collect();
+    }
+
+    fn move_results_in_checkp(&self, mv: Move, color: Color) -> bool {
+        let mut board: Board = self.clone();
+        board.make_move(mv);
+        return board.checkp(board.get_king_position(color));
+    }
+
+    fn get_king_position(&self, color: Color) -> Position {
+        let mut row = 0;
+        let mut col;
+
+        for r in self.board {
+            col = 0;
+            for p in r {
+                if p.piece_type == PieceType::King && p.color == color {
+                    return Position{x:col,y:row}
+                }
+                col -= -1;
+            }
+            row -= -1;
+        }
+
+        return Position{x:8,y:8};
     }
 
     fn get_bishop_moves(&self, pos: Position) -> Vec<Move> {
@@ -469,6 +493,11 @@ impl Board {
         }
 
         return false;
+    }
+
+    fn checkmatep(&self, color: Color) -> bool {
+        let kp: Position = self.get_king_position(color);
+        return self.checkp(kp) && self.get_all_moves(color).is_empty()
     }
 }
 

@@ -51,7 +51,9 @@ pub mod players {
             for mov in moves {
                 temp_board = board.clone();
                 temp_board.make_move(mov);
-                temp_score = self.alphabeta(temp_board, 5, -32768, 32767, false, color.opponent_color());
+                temp_score = self.alphabeta(temp_board, 4, -32768, 32767, false, color.opponent_color());
+
+                println!("{mov}: {temp_score}");
 
                 if temp_score > score {
                     mv = mov;
@@ -192,7 +194,38 @@ pub mod players {
         }
 
         fn evaluate(&self, board: Board, color: Color) -> i16 {
-            return AI::points(board, color);
+            // Piece points (knights in center and forward, bishops on long files, rooks on 7th rank)
+            // center control
+            // rooks on open/semi open files
+            // doubled pawns/pawn structure
+            // fewer moves for the opponent, more moves for me
+            let mut score = 0;
+            score += AI::points(board, color);
+            score += AI::moves(board, color) * 10;
+            score += AI::doubled_pawns(board, color) * 3;
+            return score;
+        }
+
+        fn moves(board: Board, color: Color) -> i16 {
+            return ((board.get_all_moves(color).len() as isize) - (board.get_all_moves(color.opponent_color()).len() as isize)).try_into().unwrap();
+        }
+
+        fn doubled_pawns(board: Board, color: Color) -> i16 {
+            let mut pawns: i16;
+            let mut total: i16 = 0;
+            let mut piece: Piece;
+
+            for col in 0..8 {
+                pawns = 0;
+                for row in 0..8 {
+                    piece = board.get_piece(Position{x:col,y:row});
+                    if piece.piece_type == PieceType::Pawn && piece.color == color {
+                        pawns += 1;
+                    }
+                }
+                total += if pawns > 1 {pawns - 1} else {0};
+            }
+            return total;
         }
 
         fn points(board: Board, color: Color) -> i16 {
@@ -221,14 +254,30 @@ pub mod players {
                                             [100, 100, 100, 100, 100, 100, 100, 100],
                                             [100, 100, 100, 100, 100, 100, 100, 100],
                                             [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 140, 140, 140, 100, 100, 100],
+                                            [100, 100, 105, 110, 110, 100, 100, 100],
                                             [100, 100, 100, 100, 100, 100, 100, 100],
                                             [100, 100, 100, 100, 100, 100, 100, 100],
                                             [100, 100, 100, 100, 100, 100, 100, 100]];
+            let knight_pos: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 330, 330, 330, 330, 300, 300],
+                                            [300, 300, 320, 320, 320, 320, 300, 300],
+                                            [300, 300, 310, 310, 310, 310, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300]];
+            let bishop_pos: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300],
+                                            [300, 310, 300, 300, 300, 300, 310, 300],
+                                            [310, 300, 310, 300, 300, 310, 300, 310],
+                                            [300, 310, 300, 300, 300, 300, 310, 300],
+                                            [300, 300, 300, 300, 300, 300, 300, 300]];
 
             match piece {
-                PieceType::Bishop=>return 300,
-                PieceType::Knight=>return 300,
+                PieceType::Bishop=>return AI::get_pos_points(pos, color, bishop_pos),
+                PieceType::Knight=>return AI::get_pos_points(pos, color, knight_pos),
                 PieceType::Rook=>return 500,
                 PieceType::King=>return 0,
                 PieceType::Queen=>return 900,
@@ -240,6 +289,7 @@ pub mod players {
         fn get_pos_points(pos: Position, color: Color, mut grid: [[i16; 8]; 8]) -> i16 {
             if color == Color::White {
                 grid.reverse();
+                grid[pos.y as usize].reverse();
             }
             return grid[pos.y as usize][pos.x as usize];
         }

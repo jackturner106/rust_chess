@@ -223,9 +223,13 @@ impl Board {
 
         if piece.piece_type == PieceType::King && piece.color == Color::Black {
             self.black_king = new_move.end;
+            self.black_kingside = false;
+            self.black_queenside = false;
         }
         if piece.piece_type == PieceType::King && piece.color == Color::White {
             self.white_king = new_move.end;
+            self.white_queenside = false;
+            self.white_kingside = false;
         }
     }
 
@@ -237,20 +241,20 @@ impl Board {
         return self.board[pos.y as usize][pos.x as usize];
     }
 
-    fn get_moves(&self, pos: Position) -> Vec<Move> {
+    fn get_moves(&self, pos: Position, mut vec: &mut Vec<Move>) -> () {
         match self.get_piece(pos).piece_type {
-            PieceType::Bishop=>return self.get_bishop_moves(pos),
-            PieceType::Knight=>return self.get_knight_moves(pos),
-            PieceType::Rook=>return self.get_rook_moves(pos),
-            PieceType::King=>return self.get_king_moves(pos),
-            PieceType::Queen=>return self.get_queen_moves(pos),
-            PieceType::Pawn=>return self.get_pawn_moves(pos),
-            PieceType::Empty=>return vec![],
+            PieceType::Bishop=>self.get_bishop_moves(pos, &mut vec),
+            PieceType::Knight=>return self.get_knight_moves(pos, &mut vec),
+            PieceType::Rook=>return self.get_rook_moves(pos, &mut vec),
+            PieceType::King=>return self.get_king_moves(pos, &mut vec),
+            PieceType::Queen=>return self.get_queen_moves(pos, &mut vec),
+            PieceType::Pawn=>return self.get_pawn_moves(pos, &mut vec),
+            PieceType::Empty=>{},
         }
     }
 
     fn get_all_moves(&self, color: Color) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+        let mut moves: Vec<Move> = Vec::with_capacity(50 as usize);
 
         let mut row = 0;
         let mut col;
@@ -258,7 +262,7 @@ impl Board {
             col = 0;
             for p in r {
                 if p.color == color {
-                    moves.append(&mut self.get_moves(Position{x: col, y: row}));
+                    self.get_moves(Position{x: col, y: row}, &mut moves);
                 }
                 col += 1;
             }
@@ -274,8 +278,7 @@ impl Board {
         return board.checkp(if color == Color::Black {self.black_king} else {self.white_king});
     }
 
-    fn get_bishop_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_bishop_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let op: Color = self.get_piece(pos).color.opponent_color();
 
         let dirs = [|pos: Position| pos.up().left(), |pos: Position| pos.up().right(), |pos: Position| pos.down().left(),|pos: Position| pos.down().right()];
@@ -291,12 +294,9 @@ impl Board {
             }
             
         }
-
-        return moves;
     }
 
-    fn get_knight_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_knight_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let me: Color = self.get_piece(pos).color;
 
         for p in [pos.up().up().left(), pos.up().up().right(), pos.up().left().left(), pos.up().right().right(), pos.down().down().left(), pos.down().down().right(), pos.down().left().left(), pos.down().right().right()] {
@@ -304,12 +304,9 @@ impl Board {
                 moves.push(Move {start:pos, end:p});
             }
         }
-
-        return moves;
     }
 
-    fn get_rook_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_rook_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let op: Color = self.get_piece(pos).color.opponent_color();
 
         let dirs = [|pos: Position| pos.up(), |pos: Position| pos.down(), |pos: Position| pos.left(),|pos: Position| pos.right()];
@@ -325,12 +322,9 @@ impl Board {
             }
 
         }
-
-        return moves;
     }
 
-    fn get_king_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_king_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let mut board = self.clone();
         let me: Color = self.get_piece(pos).color;
 
@@ -356,12 +350,9 @@ impl Board {
         if me == Color::Black && self.black_queenside && pos.left().left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
             moves.push(Move{ start:pos, end: pos.left().left() });
         }
-
-        return moves;
     }
 
-    fn get_queen_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_queen_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let op: Color = self.get_piece(pos).color.opponent_color();
 
         let dirs = [|pos: Position| pos.up().left(), |pos: Position| pos.up().right(), |pos: Position| pos.down().left(),|pos: Position| pos.down().right(), |pos: Position| pos.up(), |pos: Position| pos.down(), |pos: Position| pos.left(), |pos: Position| pos.right()];
@@ -377,12 +368,9 @@ impl Board {
             }
             
         }
-
-        return moves;
     }
 
-    fn get_pawn_moves(&self, pos: Position) -> Vec<Move> {
-        let mut moves: Vec<Move> = vec![];
+    fn get_pawn_moves(&self, pos: Position, moves: &mut Vec<Move>) -> () {
         let piece: Piece = self.get_piece(pos);
 
         if piece.color == Color::White {
@@ -430,8 +418,6 @@ impl Board {
                 moves.push(Move {start: pos, end: temp});
             }
         }
-
-        return moves;
     }
 
     fn checkp(&self, pos: Position) -> bool {

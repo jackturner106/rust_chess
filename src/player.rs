@@ -10,9 +10,36 @@ pub mod players {
     use std::io;
     use std::thread;
     use std::thread::JoinHandle;
+    use std::time::Duration;
+    use std::time::Instant;
     pub trait Player {
         fn take_turn(&mut self, board: Board, color: Color) -> Move;
     }
+
+    const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 105, 110, 110, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100]];
+    const KNIGHT_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 330, 330, 330, 330, 300, 300],
+                                    [300, 300, 320, 320, 320, 320, 300, 300],
+                                    [300, 300, 310, 310, 310, 310, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300]];
+    const BISHOP_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 310, 300, 300, 300, 300, 310, 300],
+                                    [310, 300, 310, 300, 300, 310, 300, 310],
+                                    [300, 310, 300, 300, 300, 300, 310, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300]];
 
     pub struct Human {
 
@@ -39,6 +66,11 @@ pub mod players {
 
     impl Player for AI {
         fn take_turn(&mut self, board: Board, color: Color) -> Move {
+
+            let mut now: Instant;
+            let mut elapsed: Duration;
+            now = Instant::now();
+
             let mut mv: Move;
             let mut score: i16 = -32768;
             let mut temp_board;
@@ -51,7 +83,7 @@ pub mod players {
             for mov in moves {
                 temp_board = board.clone();
                 temp_board.make_move(mov);
-                temp_score = self.alphabeta(temp_board, 4, -32768, 32767, false, color.opponent_color());
+                temp_score = self.alphabeta(temp_board, 5, -32768, 32767, false, color.opponent_color());
 
                 println!("{mov}: {temp_score}");
 
@@ -62,7 +94,9 @@ pub mod players {
             }
 
             let evals:u64 = self.pos_evaluated;
-            println!("Evaluted: {evals} ");
+            elapsed = now.elapsed();
+            let per_second = (evals as f64) / elapsed.as_secs_f64();
+            println!("Evaluted {evals} positions in {elapsed:?} for a speed of {per_second} positions per second");
             println!("Best Position: {score}");
 
             temp_board = board.clone();
@@ -212,14 +246,16 @@ pub mod players {
 
         fn print_evaluate(&self, board: Board, color: Color) {
             let pts = AI::points(board, color);
-            let mvs = AI::moves(board, color) * 3;
+            //let mvs = AI::moves(board, color) * 3;
+            let mvs = 0;
             let dps = AI::doubled_pawns(board, color) * 3;
             let tts = pts + mvs + dps;
             println!("Eval for {color:?}:: points: {pts}, moves: {mvs}, doubled: {dps}, total: {tts}");
         }
 
         fn moves(board: Board, color: Color) -> i16 {
-            return ((board.get_all_moves(color).len() as isize) - (board.get_all_moves(color.opponent_color()).len() as isize)).try_into().unwrap();
+            return 0;
+            //return ((board.get_all_moves(color).len() as isize) - (board.get_all_moves(color.opponent_color()).len() as isize)).try_into().unwrap();
         }
 
         fn doubled_pawns(board: Board, color: Color) -> i16 {
@@ -262,48 +298,20 @@ pub mod players {
 
         fn piece_points(piece: PieceType, pos: Position, color: Color) -> i16 {
 
-            let pawn_pos: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 105, 110, 110, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100],
-                                            [100, 100, 100, 100, 100, 100, 100, 100]];
-            let knight_pos: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 330, 330, 330, 330, 300, 300],
-                                            [300, 300, 320, 320, 320, 320, 300, 300],
-                                            [300, 300, 310, 310, 310, 310, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300]];
-            let bishop_pos: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300],
-                                            [300, 310, 300, 300, 300, 300, 310, 300],
-                                            [310, 300, 310, 300, 300, 310, 300, 310],
-                                            [300, 310, 300, 300, 300, 300, 310, 300],
-                                            [300, 300, 300, 300, 300, 300, 300, 300]];
-
             match piece {
-                PieceType::Bishop=>return AI::get_pos_points(pos, color, bishop_pos),
-                PieceType::Knight=>return AI::get_pos_points(pos, color, knight_pos),
+                PieceType::Bishop=>return AI::get_pos_points(pos, color, BISHOP_POS),
+                PieceType::Knight=>return AI::get_pos_points(pos, color, KNIGHT_POS),
                 PieceType::Rook=>return 500,
                 PieceType::King=>return 0,
                 PieceType::Queen=>return 900,
-                PieceType::Pawn=>return AI::get_pos_points(pos, color, pawn_pos),
+                PieceType::Pawn=>return AI::get_pos_points(pos, color, PAWN_POS),
                 PieceType::Empty=>return 0,
             };
         }
 
-        fn get_pos_points(pos: Position, color: Color, mut grid: [[i16; 8]; 8]) -> i16 {
-            if color == Color::White {
-                grid.reverse();
-                grid[pos.y as usize].reverse();
-            }
-            return grid[pos.y as usize][pos.x as usize];
+        fn get_pos_points(pos: Position, color: Color, grid: [[i16; 8]; 8]) -> i16 {
+            let mp:Position = if color == Color::Black {pos} else {Position{x:7-pos.x,y:7-pos.y}};
+            return grid[mp.y as usize][mp.x as usize];
         }
     }
 }

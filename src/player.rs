@@ -65,6 +65,10 @@ pub mod players {
             println!("Evaluted: {evals} ");
             println!("Best Position: {score}");
 
+            temp_board = board.clone();
+            temp_board.make_move(mv);
+            self.print_evaluate(temp_board, color);
+
             return mv;
         }
     }
@@ -201,9 +205,17 @@ pub mod players {
             // fewer moves for the opponent, more moves for me
             let mut score = 0;
             score += AI::points(board, color);
-            score += AI::moves(board, color) * 10;
+            score += AI::moves(board, color) * 3;
             score += AI::doubled_pawns(board, color) * 3;
             return score;
+        }
+
+        fn print_evaluate(&self, board: Board, color: Color) {
+            let pts = AI::points(board, color);
+            let mvs = AI::moves(board, color) * 3;
+            let dps = AI::doubled_pawns(board, color) * 3;
+            let tts = pts + mvs + dps;
+            println!("Eval for {color:?}:: points: {pts}, moves: {mvs}, doubled: {dps}, total: {tts}");
         }
 
         fn moves(board: Board, color: Color) -> i16 {
@@ -240,7 +252,7 @@ pub mod players {
                     if piece.color == color {
                         points += AI::piece_points(piece.piece_type, pos, color)
                     } else if piece.color != Color::None {
-                        points -= AI::piece_points(piece.piece_type, pos, color);
+                        points -= AI::piece_points(piece.piece_type, pos, color.opponent_color());
                     }
                 }
             }

@@ -22,7 +22,7 @@ pub mod controller {
             let mut now: Instant;
             let mut elapsed: Duration;
 
-            let mut p1 = Human{};
+            let mut p1: AI = AI::new();
             let mut p2: AI = AI::new();
 
             while turns < 100 {

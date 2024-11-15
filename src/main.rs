@@ -153,7 +153,9 @@ struct Board {
     white_kingside: bool,
     white_queenside: bool,
     black_kingside: bool,
-    black_queenside: bool
+    black_queenside: bool,
+    black_king: Position,
+    white_king: Position
 }
 
 impl fmt::Display for Board {
@@ -218,6 +220,13 @@ impl Board {
                 self.put_piece(Position{y:7,x:0}, Piece {piece_type: PieceType::Empty, color: Color::None});
             }
         }
+
+        if piece.piece_type == PieceType::King && piece.color == Color::Black {
+            self.black_king = new_move.end;
+        }
+        if piece.piece_type == PieceType::King && piece.color == Color::White {
+            self.white_king = new_move.end;
+        }
     }
 
     fn put_piece(&mut self, pos: Position, piece: Piece) {
@@ -262,25 +271,7 @@ impl Board {
     fn move_results_in_checkp(&self, mv: Move, color: Color) -> bool {
         let mut board: Board = self.clone();
         board.make_move(mv);
-        return board.checkp(board.get_king_position(color));
-    }
-
-    fn get_king_position(&self, color: Color) -> Position {
-        let mut row = 0;
-        let mut col;
-
-        for r in self.board {
-            col = 0;
-            for p in r {
-                if p.piece_type == PieceType::King && p.color == color {
-                    return Position{x:col,y:row}
-                }
-                col -= -1;
-            }
-            row -= -1;
-        }
-
-        return Position{x:8,y:8};
+        return board.checkp(if color == Color::Black {self.black_king} else {self.white_king});
     }
 
     fn get_bishop_moves(&self, pos: Position) -> Vec<Move> {
@@ -496,7 +487,7 @@ impl Board {
     }
 
     fn checkmatep(&self, color: Color) -> bool {
-        let kp: Position = self.get_king_position(color);
+        let kp: Position = if color == Color::Black {self.black_king} else {self.white_king};
         return self.checkp(kp) && self.get_all_moves(color).is_empty()
     }
 }
@@ -514,7 +505,9 @@ fn make_board() -> Board {
         white_kingside: true,
         black_kingside: true,
         white_queenside: true,
-        black_queenside: true
+        black_queenside: true,
+        black_king: Position{y:7,x:4},
+        white_king: Position{y:0,x:4}
     };
 }
 

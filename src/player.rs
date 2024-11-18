@@ -16,7 +16,7 @@ pub mod players {
         fn take_turn(&mut self, board: Board, color: Color) -> Move;
     }
 
-    const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
+    /*const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
@@ -29,7 +29,7 @@ pub mod players {
                                     [300, 300, 300, 300, 300, 300, 300, 300],
                                     [300, 300, 330, 330, 330, 330, 300, 300],
                                     [300, 300, 320, 320, 320, 320, 300, 300],
-                                    [300, 300, 310, 310, 310, 310, 300, 300],
+                                    [300, 300, 20000, 310, 310, 310, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300]];
     const BISHOP_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
@@ -39,6 +39,30 @@ pub mod players {
                                     [300, 310, 300, 300, 300, 300, 310, 300],
                                     [310, 300, 310, 300, 300, 310, 300, 310],
                                     [300, 310, 300, 300, 300, 300, 310, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300]];*/
+    const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100],
+                                    [100, 100, 100, 100, 100, 100, 100, 100]];
+    const KNIGHT_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 1000, 300, 300, 1000, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300]];
+    const BISHOP_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 300, 300, 300, 300, 300],
+                                    [300, 300, 300, 1000, 300, 300, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300]];
 
     pub struct Human {
@@ -76,6 +100,8 @@ pub mod players {
             let mut temp_board;
             self.pos_evaluated = 0;
             let mut temp_score: i16;
+            let mut move_list: Vec<Move>;
+            let mut mv_string: Vec<String>;
 
             let moves = board.get_all_moves(color);
             mv = moves[0];
@@ -83,9 +109,10 @@ pub mod players {
             for mov in moves {
                 temp_board = board.clone();
                 temp_board.make_move(mov);
-                temp_score = self.alphabeta(temp_board, 5, -32768, 32767, false, color.opponent_color());
+                (temp_score, move_list) = self.alphabeta_trace(temp_board, 5, -32768, 32767, false, color.opponent_color());
 
-                println!("{mov}: {temp_score}");
+                mv_string = move_list.iter().map(|m| m.to_string()).collect();
+                println!("{mov}: {temp_score} from {mv_string:?}");
 
                 if temp_score > score {
                     mv = mov;
@@ -231,6 +258,76 @@ pub mod players {
             }
         }
 
+        fn alphabeta_trace(&mut self, board: Board, depth: u8, al: i16, be: i16, max: bool, color: Color) -> (i16, Vec<Move>) {
+
+            self.pos_evaluated += 1;
+
+            if board.checkmatep(color) {
+                // This possible introduces a bug, could be just return -32768?
+                return if max {(-32768, vec![])} else {(32767, vec![])};
+            } else if depth == 0 {
+                return if max {(self.evaluate(board, color), vec![])} else {(self.evaluate(board, color) * -1, vec![])};
+            }
+
+            let mut best_score: i16; 
+            let mut cur_score: i16;
+            let mut temp_board: Board;
+            let mut move_list: Vec<Move> = vec![];
+            let mut temp_move_list: Vec<Move>;
+            let op: Color = color.opponent_color();
+
+            let mut a = al;
+            let mut b = be;
+
+            let moves: Vec<Move> = board.get_all_moves(color);
+            if max {
+                best_score = -32768;
+
+                for mv in moves {
+                    temp_board = board.clone();
+                    temp_board.make_move(mv);
+                    (cur_score, temp_move_list) = self.alphabeta_trace(temp_board, depth - 1, a, b, false, op);
+
+                    if cur_score > best_score {
+                        best_score = cur_score;
+                        move_list = temp_move_list;
+                        move_list.insert(0, mv);
+                    }
+
+                    a = cmp::max(a, best_score);
+
+                    if best_score >= b {
+                        return (best_score, move_list);
+                    }
+                }
+
+                return (best_score, move_list);
+
+            } else {
+                best_score = 32767;
+
+                for mv in moves {
+                    temp_board = board.clone();
+                    temp_board.make_move(mv);
+                    (cur_score, temp_move_list) = self.alphabeta_trace(temp_board, depth - 1, a, b, true, op);
+                    
+                    if cur_score < best_score {
+                        best_score = cur_score;
+                        move_list = temp_move_list;
+                        move_list.insert(0, mv);
+                    }
+
+                    b = cmp::min(b, best_score);
+
+                    if best_score <= a {
+                        return (best_score, move_list);
+                    }
+                }
+
+                return (best_score, move_list);
+            }
+        }
+
         fn evaluate(&self, board: Board, color: Color) -> i16 {
             // Piece points (knights in center and forward, bishops on long files, rooks on 7th rank)
             // center control
@@ -238,9 +335,9 @@ pub mod players {
             // doubled pawns/pawn structure
             // fewer moves for the opponent, more moves for me
             let mut score = 0;
-            score += AI::points(board, color);
+            score += AI::points(board, color) - AI::points(board, color.opponent_color());
             score += AI::moves(board, color) * 3;
-            score += AI::doubled_pawns(board, color) * 3;
+            score += (AI::doubled_pawns(board, color) - AI::doubled_pawns(board, color.opponent_color())) * 0;
             return score;
         }
 
@@ -286,9 +383,7 @@ pub mod players {
                     pos = Position{x:i,y:l};
                     piece = board.get_piece(pos);
                     if piece.color == color {
-                        points += AI::piece_points(piece.piece_type, pos, color)
-                    } else if piece.color != Color::None {
-                        points -= AI::piece_points(piece.piece_type, pos, color.opponent_color());
+                        points += AI::piece_points(piece.piece_type, pos, color);
                     }
                 }
             }

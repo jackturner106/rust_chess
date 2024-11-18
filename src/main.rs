@@ -269,7 +269,13 @@ impl Board {
             row += 1
         }
 
-        return moves.into_iter().filter(|mv| {!self.move_results_in_checkp(*mv, color)}).collect();
+        return moves;
+    }
+
+    fn check_and_add_move(&self, mv: Move, color: Color, moves: &mut Vec<Move>) {
+        if !self.move_results_in_checkp(mv, color) {
+            moves.push(mv);
+        }
     }
 
     fn move_results_in_checkp(&self, mv: Move, color: Color) -> bool {
@@ -286,11 +292,11 @@ impl Board {
 
             let mut temp: Position = dir(pos);
             while temp.validp() && self.get_piece(temp).color == Color::None {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
                 temp = dir(temp);
             }
             if temp.validp() && self.get_piece(temp).color == op {
-                moves.push(Move {start: pos, end: temp})
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
             }
             
         }
@@ -301,7 +307,7 @@ impl Board {
 
         for p in [pos.up().up().left(), pos.up().up().right(), pos.up().left().left(), pos.up().right().right(), pos.down().down().left(), pos.down().down().right(), pos.down().left().left(), pos.down().right().right()] {
             if p.validp() && self.get_piece(p).color != me {
-                moves.push(Move {start:pos, end:p});
+                self.check_and_add_move(Move {start: pos, end: p}, me, moves);
             }
         }
     }
@@ -314,11 +320,11 @@ impl Board {
 
             let mut temp: Position = dir(pos);
             while temp.validp() && self.get_piece(temp).color == Color::None {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
                 temp = dir(temp);
             }
             if temp.validp() && self.get_piece(temp).color == op {
-                moves.push(Move {start: pos, end: temp})
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
             }
 
         }
@@ -332,23 +338,23 @@ impl Board {
             if loc.validp() && self.get_piece(loc).color != me {
                 board.make_move(Move{start:pos, end:loc});
                 if !(board.checkp(loc)) {
-                    moves.push(Move {start: pos, end: loc})
+                    self.check_and_add_move(Move {start: pos, end: loc}, me, moves);
                 }
                 board.make_move(Move{start:loc, end:pos});
             }
         }
 
         if me == Color::White && self.white_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
-            moves.push(Move{ start:pos, end: pos.right().right() });
+            self.check_and_add_move(Move{ start:pos, end: pos.right().right() }, me, moves);
         }
         if me == Color::White && self.white_queenside && pos.left().left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
-            moves.push(Move{ start:pos, end: pos.left().left() });
+            self.check_and_add_move(Move{ start:pos, end: pos.left().left() }, me, moves);
         }
         if me == Color::Black && self.black_kingside && pos.right().right().validp() && self.get_piece(pos.right()).piece_type == PieceType::Empty && self.get_piece(pos.right().right()).piece_type == PieceType::Empty {
-            moves.push(Move{ start:pos, end: pos.right().right() });
+            self.check_and_add_move(Move{ start:pos, end: pos.right().right()}, me, moves);
         }
         if me == Color::Black && self.black_queenside && pos.left().left().left().validp() && self.get_piece(pos.left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left()).piece_type == PieceType::Empty && self.get_piece(pos.left().left().left()).piece_type == PieceType::Empty {
-            moves.push(Move{ start:pos, end: pos.left().left() });
+            self.check_and_add_move(Move{ start:pos, end: pos.left().left() }, me, moves);
         }
     }
 
@@ -360,11 +366,11 @@ impl Board {
 
             let mut temp: Position = dir(pos);
             while temp.validp() && self.get_piece(temp).color == Color::None {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
                 temp = dir(temp);
             }
             if temp.validp() && self.get_piece(temp).color == op {
-                moves.push(Move {start: pos, end: temp})
+                self.check_and_add_move(Move {start: pos, end: temp}, op.opponent_color(), moves);
             }
             
         }
@@ -376,46 +382,48 @@ impl Board {
         if piece.color == Color::White {
             let mut temp: Position = pos.up();
             if temp.validp() && self.get_piece(temp).piece_type == PieceType::Empty {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
                 if temp.y == 2 {
                     let first_double: Position = temp.up();
                     if first_double.validp() && self.get_piece(first_double).piece_type == PieceType::Empty {
-                        moves.push(Move {start: pos, end: first_double});
+                        self.check_and_add_move(Move {start: pos, end: first_double}, piece.color, moves);
                     }
                 }
             }
             
             temp = temp.left();
             if temp.validp() && self.get_piece(temp).color == Color::Black {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
 
             temp = temp.right().right();
             if temp.validp() && self.get_piece(temp).color == Color::Black {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
         }
 
         if piece.color == Color::Black {
             let mut temp: Position = pos.down();
             if temp.validp() && self.get_piece(temp).piece_type == PieceType::Empty {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
                 if temp.y == 5 {
                     let first_double: Position = temp.down();
                     if first_double.validp() && self.get_piece(first_double).piece_type == PieceType::Empty {
-                        moves.push(Move {start: pos, end: first_double});
+                        self.check_and_add_move(Move {start: pos, end: first_double}, piece.color, moves);
+
                     }
                 }
             }
             
             temp = temp.left();
             if temp.validp() && self.get_piece(temp).color == Color::White {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
 
             temp = temp.right().right();
             if temp.validp() && self.get_piece(temp).color == Color::White {
-                moves.push(Move {start: pos, end: temp});
+                self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
+
             }
         }
     }

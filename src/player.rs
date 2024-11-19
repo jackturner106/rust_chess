@@ -16,7 +16,7 @@ pub mod players {
         fn take_turn(&mut self, board: Board, color: Color) -> Move;
     }
 
-    /*const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
+    const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
                                     [100, 100, 100, 100, 100, 100, 100, 100],
@@ -29,7 +29,7 @@ pub mod players {
                                     [300, 300, 300, 300, 300, 300, 300, 300],
                                     [300, 300, 330, 330, 330, 330, 300, 300],
                                     [300, 300, 320, 320, 320, 320, 300, 300],
-                                    [300, 300, 20000, 310, 310, 310, 300, 300],
+                                    [300, 300, 310, 310, 310, 310, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300]];
     const BISHOP_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
@@ -39,30 +39,6 @@ pub mod players {
                                     [300, 310, 300, 300, 300, 300, 310, 300],
                                     [310, 300, 310, 300, 300, 310, 300, 310],
                                     [300, 310, 300, 300, 300, 300, 310, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300]];*/
-    const PAWN_POS: [[i16; 8]; 8] = [[100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100],
-                                    [100, 100, 100, 100, 100, 100, 100, 100]];
-    const KNIGHT_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 1000, 300, 300, 1000, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300]];
-    const BISHOP_POS: [[i16; 8]; 8] = [[300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 300, 300, 300, 300, 300],
-                                    [300, 300, 300, 1000, 300, 300, 300, 300],
                                     [300, 300, 300, 300, 300, 300, 300, 300]];
 
     pub struct Human {
@@ -96,6 +72,7 @@ pub mod players {
             now = Instant::now();
 
             let mut mv: Move;
+            let mut cur_move: Move;
             let mut score: i16 = -32768;
             let mut temp_board;
             self.pos_evaluated = 0;
@@ -104,18 +81,24 @@ pub mod players {
             let mut mv_string: Vec<String>;
 
             let moves = board.get_all_moves(color);
-            mv = moves[0];
+            let mut mv_boards: Vec<(Board, Move)> = moves.iter().map(|mv| {
+                let mut temp_board = board.clone();
+                temp_board.make_move(*mv);
+                (temp_board, *mv)}).collect();
+            mv_boards.sort_by(|mva, mvb| {
+                return self.evaluate(mvb.0, color).cmp(&self.evaluate(mva.0, color))
+            });
+            mv = mv_boards[0].1;
 
-            for mov in moves {
-                temp_board = board.clone();
-                temp_board.make_move(mov);
-                (temp_score, move_list) = self.alphabeta_trace(temp_board, 5, -32768, 32767, false, color.opponent_color());
+            for mov in mv_boards {
+                (temp_score, move_list) = self.alphabeta_trace(mov.0, 6, -32768, 32767, false, color.opponent_color());
 
                 mv_string = move_list.iter().map(|m| m.to_string()).collect();
-                println!("{mov}: {temp_score} from {mv_string:?}");
+                cur_move = mov.1;
+                println!("{cur_move}: {temp_score} from {mv_string:?}");
 
                 if temp_score > score {
-                    mv = mov;
+                    mv = mov.1;
                     score = temp_score;
                 }
             }

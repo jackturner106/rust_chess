@@ -81,17 +81,17 @@ pub mod players {
             let mut mv_string: Vec<String>;
 
             let moves = board.get_all_moves(color);
-            let mut mv_boards: Vec<(Board, Move)> = moves.iter().map(|mv| {
-                let mut temp_board = board.clone();
-                temp_board.make_move(*mv);
-                (temp_board, *mv)}).collect();
-            mv_boards.sort_by(|mva, mvb| {
-                return self.evaluate(mvb.0, color).cmp(&self.evaluate(mva.0, color))
-            });
+            let mv_boards: Vec<(Board, Move)> = self.make_boards(moves, board, color);
             mv = mv_boards[0].1;
 
+            let mut depth: u8 = 1;
+            while i32::pow(mv_boards.len() as i32, depth as u32) < 45000000 {
+                depth += 1;
+            }
+            println!("Searching to depth {depth}");
+
             for mov in mv_boards {
-                (temp_score, move_list) = self.alphabeta_trace(mov.0, 6, -32768, 32767, false, color.opponent_color());
+                (temp_score, move_list) = self.alphabeta_trace(mov.0, depth, -32768, 32767, false, color.opponent_color());
 
                 mv_string = move_list.iter().map(|m| m.to_string()).collect();
                 cur_move = mov.1;
@@ -118,6 +118,17 @@ pub mod players {
     }
 
     impl AI {
+
+        fn make_boards(&self, moves: Vec<Move>, board: Board, color: Color) -> Vec<(Board, Move)> {
+            let mut mv_boards: Vec<(Board, Move)> = moves.iter().map(|mv| {
+                let mut temp_board = board.clone();
+                temp_board.make_move(*mv);
+                (temp_board, *mv)}).collect();
+            mv_boards.sort_by(|mva, mvb| {
+                return self.evaluate(mvb.0, color).cmp(&self.evaluate(mva.0, color))
+            });
+            return mv_boards;
+        }
 
         pub fn take_turn_threaded(&mut self, board: Board, color: Color) -> Move {
             let mut mv: Move;
@@ -254,9 +265,9 @@ pub mod players {
 
             let mut best_score: i16; 
             let mut cur_score: i16;
-            let mut temp_board: Board;
             let mut move_list: Vec<Move> = vec![];
             let mut temp_move_list: Vec<Move>;
+            let mut temp_board: Board;
             let op: Color = color.opponent_color();
 
             let mut a = al;
@@ -320,12 +331,12 @@ pub mod players {
             let mut score = 0;
             score += AI::points(board, color) - AI::points(board, color.opponent_color());
             score += AI::moves(board, color) * 3;
-            score += (AI::doubled_pawns(board, color) - AI::doubled_pawns(board, color.opponent_color())) * 0;
+            score += (AI::doubled_pawns(board, color) - AI::doubled_pawns(board, color.opponent_color())) * 2;
             return score;
         }
 
         fn print_evaluate(&self, board: Board, color: Color) {
-            let pts = AI::points(board, color);
+            let pts = AI::points(board, color) - AI::points(board, color.opponent_color());
             //let mvs = AI::moves(board, color) * 3;
             let mvs = 0;
             let dps = AI::doubled_pawns(board, color) * 3;
@@ -340,18 +351,41 @@ pub mod players {
 
         fn doubled_pawns(board: Board, color: Color) -> i16 {
             let mut pawns: i16;
+            let mut opawns: i16;
+            let mut rooks: i16;
+            let mut orooks: i16;
             let mut total: i16 = 0;
             let mut piece: Piece;
 
             for col in 0..8 {
                 pawns = 0;
+                rooks = 0;
+                orooks = 0;
+                opawns = 0;
                 for row in 0..8 {
                     piece = board.get_piece(Position{x:col,y:row});
-                    if piece.piece_type == PieceType::Pawn && piece.color == color {
-                        pawns += 1;
+                    if piece.piece_type == PieceType::Pawn {
+                        if piece.color == color {
+                            pawns += 1;
+                        }
+                        else {
+                            opawns += 1;
+                        }
+                    } else if piece.piece_type == PieceType::Rook {
+                        if piece.color == color {
+                            rooks += 1;
+                        }
+                        else {
+                            orooks += 1;
+                        }
                     }
                 }
-                total += if pawns > 1 {pawns - 1} else {0};
+                total -= if pawns > 1 {pawns - 1} else {0};
+                if pawns + opawns == 1 {
+                    total += (rooks * 20) - (orooks * 20);
+                } else if pawns + opawns == 0 {
+                    total += (rooks * 45) - (orooks * 45);
+                }
             }
             return total;
         }

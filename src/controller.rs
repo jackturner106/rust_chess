@@ -40,7 +40,7 @@ pub mod controller {
                     println!("White to move");
 
                     //now = Instant::now();
-                    current_move = p1.take_turn(board, Color::White);
+                    current_move = p1.take_turn_threaded(board, Color::White);
                     //elapsed = now.elapsed();
                     //println!("Take Turn (threads) took: {:.2?}", elapsed);
                     //println!("And got move {current_move}");
@@ -48,7 +48,7 @@ pub mod controller {
                     current_turn = Color::Black;
                 } else {
                     println!("Black to move.");
-                    current_move = p2.take_turn(board, Color::Black);
+                    current_move = p2.take_turn_threaded(board, Color::Black);
                     current_turn = Color::White;
                 }
 

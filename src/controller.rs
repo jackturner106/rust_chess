@@ -23,7 +23,9 @@ pub mod controller {
             let mut elapsed: Duration;
 
             let mut p2: AI = AI::new();
-            let mut p1: AI = AI::new();
+            //let mut p1: AI = AI::new();
+            //let mut p2: AI = AI::new();
+            let mut p1: Human=Human{};
 
             while turns < 100 {
 
@@ -40,7 +42,7 @@ pub mod controller {
                     println!("White to move");
 
                     //now = Instant::now();
-                    current_move = p1.take_turn_threaded(board, Color::White);
+                    current_move = p1.take_turn(board, Color::White);
                     //elapsed = now.elapsed();
                     //println!("Take Turn (threads) took: {:.2?}", elapsed);
                     //println!("And got move {current_move}");

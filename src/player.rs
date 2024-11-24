@@ -6,6 +6,7 @@ pub mod players {
     use crate::Piece;
     use crate::PieceType;
     use crate::Position;
+    use std::any::Any;
     use std::cmp;
     use std::io;
     use std::thread;
@@ -132,109 +133,87 @@ pub mod players {
 
         pub fn take_turn_threaded(&mut self, board: Board, color: Color) -> Move {
 
-            let mut now: Instant;
-            let mut elapsed: Duration;
-            now = Instant::now();
+            let now: Instant = Instant::now();
+            let mut depth = 2;
+            let mut mv: Move = self.run_threads_to_depth(board, color, 1);
+            
+            while now.elapsed() < Duration::new(0, 500000000) {
+                mv = self.run_threads_to_depth(board, color, depth);
+                depth += 1;
+            }
+            mv = self.run_threads_to_depth(board, color, depth);
+
+            println!("Got to depth {depth}");
+
+            return mv;
+        }
+
+        fn run_threads_to_depth(&mut self, board: Board, color: Color, depth: u8) -> Move {
+            let now: Instant = Instant::now();
+            let elapsed: Duration;
+            const THREADS: usize = 8;
 
             let mut mv: Move;
             let mut score: i16 = -32768;
             self.pos_evaluated = 0;
-            let mut temp_score: i16;
 
-            let mut moves = board.get_all_moves(color);
-            mv = moves[0];
-            let moves2 = moves.split_off((moves.len()/4) * 3);
-            let moves3 = moves.split_off((moves.len()/3) * 2);
-            let moves4 = moves.split_off(moves.len()/2);
+            let moves = board.get_all_moves(color);
+            let mut mv_boards = self.make_boards(moves, board, color);
+            mv = mv_boards[0].1;
 
-            let handle: JoinHandle<(i16, Move, u64)> = thread::spawn(move || {
-                let mut ai: AI = AI{pos_evaluated:0};
-                let mut thread_temp_score: i16;
-                let mut thread_score: i16 = -32768;
-                let mut thread_mv: Move = moves2[0];
-                let thread_mv_boards = ai.make_boards(moves2, board, color);
+            let mv_board_splits: Vec<Vec<(Board, Move, i16)>> = (0..THREADS)
+            .map(|i| mv_boards.split_off((((mv_boards.len() as f64)/((THREADS - i) as f64)) * ((THREADS - i - 1)as f64)).round() as usize))
+            .collect();
 
-                for mov in thread_mv_boards {
-                    thread_temp_score = ai.alphabeta(mov.0, 5, -32768, 32767, false, color.opponent_color());
+            let mut handles: Vec<JoinHandle<(i16, Move, u64)>> = mv_board_splits.into_iter().map(|mvb|
+                thread::spawn(move || {
+                    let mut ai: AI = AI{pos_evaluated:0};
+                    let mut ab_res;
+                    let mut thread_temp_score: i16;
+                    let mut thread_score: i16 = -32768;
+                    let mut thread_mv: Move = mvb[0].1;
+                    let mut tmvl: Vec<String>;
+                    let thread_mv_boards = mvb;
     
-                    if thread_temp_score > thread_score {
-                        thread_mv = mov.1;
-                        thread_score = thread_temp_score;
+                    for mov in thread_mv_boards {
+                        ab_res = ai.alphabeta_trace(mov.0, depth, -32768, 32767, false, color.opponent_color());
+                        let tmv = mov.1;
+                        let tsc = ab_res.0;
+                        tmvl = ab_res.1.iter().map(|m| m.to_string()).collect();
+                        println!("Move {tmv} got score {tsc} with {tmvl:?}");
+                        thread_temp_score = ab_res.0;
+        
+                        if thread_temp_score > thread_score {
+                            thread_mv = mov.1;
+                            thread_score = thread_temp_score;
+                        }
                     }
-                }
-
-                return (thread_score, thread_mv, ai.pos_evaluated);
-            });
-            let handle2: JoinHandle<(i16, Move, u64)> = thread::spawn(move || {
-                let mut ai: AI = AI{pos_evaluated:0};
-                let mut thread_temp_score: i16;
-                let mut thread_score: i16 = -32768;
-                let mut thread_mv: Move = moves3[0];
-                let thread_mv_boards = ai.make_boards(moves3, board, color);
-
-                for mov in thread_mv_boards {
-                    thread_temp_score = ai.alphabeta(mov.0, 5, -32768, 32767, false, color.opponent_color());
     
-                    if thread_temp_score > thread_score {
-                        thread_mv = mov.1;
-                        thread_score = thread_temp_score;
-                    }
-                }
+                    return (thread_score, thread_mv, ai.pos_evaluated);
+                })).collect();
 
-                return (thread_score, thread_mv, ai.pos_evaluated);
-            });
-            let handle3: JoinHandle<(i16, Move, u64)> = thread::spawn(move || {
-                let mut ai: AI = AI{pos_evaluated:0};
-                let mut thread_temp_score: i16;
-                let mut thread_score: i16 = -32768;
-                let mut thread_mv: Move = moves4[0];
-                let thread_mv_boards = ai.make_boards(moves4, board, color);
-
-                for mov in thread_mv_boards {
-                    thread_temp_score = ai.alphabeta(mov.0, 5, -32768, 32767, false, color.opponent_color());
-    
-                    if thread_temp_score > thread_score {
-                        thread_mv = mov.1;
-                        thread_score = thread_temp_score;
-                    }
-                }
-
-                return (thread_score, thread_mv, ai.pos_evaluated);
-            });
-
-            let mv_boards = self.make_boards(moves, board, color);
-            for mov in mv_boards {
-                temp_score = self.alphabeta(mov.0, 5, -32768, 32767, false, color.opponent_color());
-
-                if temp_score > score {
-                    mv = mov.1;
-                    score = temp_score;
+            let mut evals: u64 = 0;
+            let mut val: (i16, Move, u64);
+            handles.reverse();
+            for handle in handles {
+                val = handle.join().unwrap();
+                let tmv = val.1;
+                let tsc = val.0;
+                println!("Best from thread: {tmv} with score {tsc}");
+                evals += val.2;
+                if val.0 > score {
+                    score = val.0;
+                    mv = val.1;
                 }
             }
 
-            let res = handle.join();
-            let val = res.unwrap();
-            let res2 = handle2.join();
-            let val2 = res2.unwrap();
-            let res3 = handle3.join();
-            let val3 = res3.unwrap();
-
-            let evals:u64 = self.pos_evaluated + val.2 + val2.2 + val3.2;
             println!("Evaluted: {evals} ");
             elapsed = now.elapsed();
             let per_second = (evals as f64) / elapsed.as_secs_f64();
             println!("Evaluted {evals} positions in {elapsed:?} for a speed of {per_second} positions per second");
             println!("Best Position: {score}");
 
-            if cmp::max(score, cmp::max(val.0, cmp::max(val2.0, val3.0))) == score {
-                return mv;
-            } else if cmp::max(val.0, cmp::max(val2.0, val3.0)) == val.0 {
-                return val.1
-            } else if cmp::max(val2.0, val3.0) == val2.0 {
-                return val2.1
-            } else {
-                return val3.1
-            }
+            return mv;
         }
 
         pub fn new() -> AI {
@@ -313,7 +292,7 @@ pub mod players {
                 // This possible introduces a bug, could be just return -32768?
                 return if max {(-32768, vec![])} else {(32767, vec![])};
             } else if depth == 0 {
-                return if max {(self.evaluate(board, color), vec![])} else {(self.evaluate(board, color) * -1, vec![])};
+                return if max {(self.evaluate(board, color), vec![])} else {(self.evaluate(board, color.opponent_color()), vec![])};
             }
 
             let mut best_score: i16; 
@@ -343,7 +322,7 @@ pub mod players {
 
                     a = cmp::max(a, best_score);
 
-                    if best_score >= b {
+                    if best_score > b {
                         return (best_score, move_list);
                     }
                 }
@@ -366,7 +345,7 @@ pub mod players {
 
                     b = cmp::min(b, best_score);
 
-                    if best_score <= a {
+                    if best_score < a {
                         return (best_score, move_list);
                     }
                 }

@@ -243,7 +243,7 @@ impl Board {
 
     fn get_moves(&self, pos: Position, mut vec: &mut Vec<Move>) -> () {
         match self.get_piece(pos).piece_type {
-            PieceType::Bishop=>self.get_bishop_moves(pos, &mut vec),
+            PieceType::Bishop=>return self.get_bishop_moves(pos, &mut vec),
             PieceType::Knight=>return self.get_knight_moves(pos, &mut vec),
             PieceType::Rook=>return self.get_rook_moves(pos, &mut vec),
             PieceType::King=>return self.get_king_moves(pos, &mut vec),

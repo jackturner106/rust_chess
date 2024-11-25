@@ -112,7 +112,6 @@ pub mod players {
 
             temp_board = board.clone();
             temp_board.make_move(mv);
-            self.print_evaluate(temp_board, color);
 
             return mv;
         }
@@ -300,16 +299,20 @@ pub mod players {
             let mut move_list: Vec<Move> = vec![];
             let mut temp_move_list: Vec<Move>;
             let mut temp_board: Board;
+            let mut mv: Move;
             let op: Color = color.opponent_color();
 
             let mut a = al;
             let mut b = be;
 
             let moves: Vec<Move> = board.get_all_moves(color);
+            let mut mvv_lva_moves: Vec<(Move, i16)> = moves.into_iter().map(|mva| (mva, self.mvv_lva_score(board, mva))).collect();
             if max {
                 best_score = -32768;
 
-                for mv in moves {
+                for i in 0..mvv_lva_moves.len() {
+                    self.pick_move(&mut mvv_lva_moves, i);
+                    mv = mvv_lva_moves[i].0;
                     temp_board = board.clone();
                     temp_board.make_move(mv);
                     (cur_score, temp_move_list) = self.alphabeta_trace(temp_board, depth - 1, a, b, false, op);
@@ -332,7 +335,9 @@ pub mod players {
             } else {
                 best_score = 32767;
 
-                for mv in moves {
+                for i in 0..mvv_lva_moves.len() {
+                    self.pick_move(&mut mvv_lva_moves, i);
+                    mv = mvv_lva_moves[i].0;
                     temp_board = board.clone();
                     temp_board.make_move(mv);
                     (cur_score, temp_move_list) = self.alphabeta_trace(temp_board, depth - 1, a, b, true, op);
@@ -354,6 +359,42 @@ pub mod players {
             }
         }
 
+        fn mvv_lva_score(&self, board: Board, mv: Move) -> i16 {
+           return match board.get_piece(mv.end).piece_type {
+                PieceType::Bishop=>30,
+                PieceType::Knight=>20,
+                PieceType::Rook=>40,
+                PieceType::King=>0,
+                PieceType::Queen=>50,
+                PieceType::Pawn=>10,
+                PieceType::Empty=>0,
+            } + match board.get_piece(mv.start).piece_type {
+                PieceType::Bishop=>3,
+                PieceType::Knight=>4,
+                PieceType::Rook=>2,
+                PieceType::King=>0,
+                PieceType::Queen=>1,
+                PieceType::Pawn=>5,
+                PieceType::Empty=>0,
+            };
+        }
+
+        fn pick_move(&self, move_list: &mut Vec<(Move, i16)>, i: usize) {
+            let mut max_ind = i;
+            let mut max_val = move_list[i].1;
+            let mut iter = i;
+            while iter < move_list.len() {
+                if move_list[iter].1 > max_val {
+                    max_ind = iter;
+                    max_val = move_list[iter].1;
+                }
+                iter += 1;
+            }
+            let temp = move_list[i];
+            move_list[i] = move_list[max_ind];
+            move_list[max_ind] = temp;
+        }
+
         fn evaluate(&self, board: Board, color: Color) -> i16 {
             // Piece points (knights in center and forward, bishops on long files, rooks on 7th rank)
             // center control
@@ -362,23 +403,8 @@ pub mod players {
             // fewer moves for the opponent, more moves for me
             let mut score = 0;
             score += AI::points(board, color) - AI::points(board, color.opponent_color());
-            score += AI::moves(board, color) * 3;
             score += (AI::doubled_pawns(board, color) - AI::doubled_pawns(board, color.opponent_color())) * 2;
             return score;
-        }
-
-        fn print_evaluate(&self, board: Board, color: Color) {
-            let pts = AI::points(board, color) - AI::points(board, color.opponent_color());
-            //let mvs = AI::moves(board, color) * 3;
-            let mvs = 0;
-            let dps = AI::doubled_pawns(board, color) * 3;
-            let tts = pts + mvs + dps;
-            println!("Eval for {color:?}:: points: {pts}, moves: {mvs}, doubled: {dps}, total: {tts}");
-        }
-
-        fn moves(board: Board, color: Color) -> i16 {
-            return 0;
-            //return ((board.get_all_moves(color).len() as isize) - (board.get_all_moves(color.opponent_color()).len() as isize)).try_into().unwrap();
         }
 
         fn doubled_pawns(board: Board, color: Color) -> i16 {
@@ -388,6 +414,7 @@ pub mod players {
             let mut orooks: i16;
             let mut total: i16 = 0;
             let mut piece: Piece;
+            let mut bishops: u8 = 0;
 
             for col in 0..8 {
                 pawns = 0;
@@ -410,6 +437,8 @@ pub mod players {
                         else {
                             orooks += 1;
                         }
+                    } else if piece.piece_type == PieceType::Bishop && piece.color == color {
+                        bishops += 1;
                     }
                 }
                 total -= if pawns > 1 {pawns - 1} else {0};
@@ -418,6 +447,9 @@ pub mod players {
                 } else if pawns + opawns == 0 {
                     total += (rooks * 45) - (orooks * 45);
                 }
+            }
+            if bishops > 1 {
+                total += 10;
             }
             return total;
         }

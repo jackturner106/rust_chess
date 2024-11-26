@@ -166,6 +166,10 @@ pub mod players {
 
             let mut handles: Vec<JoinHandle<(i16, Move, u64)>> = mv_board_splits.into_iter().map(|mvb|
                 thread::spawn(move || {
+                    if mvb.len() == 0 {
+                        return (i16::MIN, Move{start:Position{x:0,y:0},end:Position{x:0,y:0}}, 0);
+                    }
+
                     let mut ai: AI = AI{pos_evaluated:0};
                     let mut ab_res;
                     let mut thread_temp_score: i16;

@@ -400,30 +400,42 @@ pub mod players {
         }
 
         fn evaluate(&self, board: Board, color: Color) -> i16 {
-            // Piece points (knights in center and forward, bishops on long files, rooks on 7th rank)
-            // center control
-            // rooks on open/semi open files
-            // doubled pawns/pawn structure
-            // fewer moves for the opponent, more moves for me
+            // Tapered evaluation: Chess boards start with 39 * 2 = 78 points
+            // after 4 pawns + 4 pieces captured middlegame, so 78 - 16 = 62
             let mut score = 0;
-            score += AI::points(board, color) - AI::points(board, color.opponent_color());
-            score += (AI::doubled_pawns(board, color) - AI::doubled_pawns(board, color.opponent_color())) * 2;
+            let my_points = AI::points(board, color);
+            let op_points = AI::points(board, color.opponent_color());
+            let (my_double_p, my_rook_open, my_rook_semi, my_bishops) = AI::doubled_pawns(board, color);
+            let (op_double_p, op_rook_open, op_rook_semi, op_bishops) = AI::doubled_pawns(board, color.opponent_color());
+
+            let total_points = my_points + op_points;
+
+            score += my_points - op_points;
+            score += ((op_double_p - my_double_p) as i16) * 3;
+            score += ((my_rook_open - op_rook_open) as i16) * 40;
+            score += ((my_rook_semi - op_rook_semi) as i16) * 10;
+
+            score += if my_bishops {10} else {0};
+            score -= if op_bishops {10} else {0};
+
             return score;
         }
 
-        fn doubled_pawns(board: Board, color: Color) -> i16 {
-            let mut pawns: i16;
-            let mut opawns: i16;
-            let mut rooks: i16;
-            let mut orooks: i16;
-            let mut total: i16 = 0;
+        // Returns: (number of doubled pawns, number of rooks on open files, number of rooks on semi open files, 
+        //           bishop pair)
+        fn doubled_pawns(board: Board, color: Color) -> (u8, u8, u8, bool) {
+            let mut pawns: u8;
+            let mut opawns: u8;
+            let mut rooks: u8;
             let mut piece: Piece;
             let mut bishops: u8 = 0;
+            let mut total_doubled_pawns: u8 = 0;
+            let mut total_rooks_open: u8 = 0;
+            let mut total_rooks_semi: u8 = 0;
 
             for col in 0..8 {
                 pawns = 0;
                 rooks = 0;
-                orooks = 0;
                 opawns = 0;
                 for row in 0..8 {
                     piece = board.get_piece(Position{x:col,y:row});
@@ -434,28 +446,20 @@ pub mod players {
                         else {
                             opawns += 1;
                         }
-                    } else if piece.piece_type == PieceType::Rook {
-                        if piece.color == color {
+                    } else if piece.piece_type == PieceType::Rook && piece.color == color {
                             rooks += 1;
-                        }
-                        else {
-                            orooks += 1;
-                        }
                     } else if piece.piece_type == PieceType::Bishop && piece.color == color {
                         bishops += 1;
                     }
                 }
-                total -= if pawns > 1 {pawns - 1} else {0};
+                total_doubled_pawns += if pawns > 1 {pawns} else {0};
                 if pawns + opawns == 1 {
-                    total += (rooks * 20) - (orooks * 20);
+                    total_rooks_semi += rooks;
                 } else if pawns + opawns == 0 {
-                    total += (rooks * 45) - (orooks * 45);
+                    total_rooks_open += rooks;
                 }
             }
-            if bishops > 1 {
-                total += 10;
-            }
-            return total;
+            return (total_doubled_pawns, total_rooks_open, total_rooks_semi, bishops > 1);
         }
 
         fn points(board: Board, color: Color) -> i16 {

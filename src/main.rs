@@ -155,7 +155,8 @@ struct Board {
     black_kingside: bool,
     black_queenside: bool,
     black_king: Position,
-    white_king: Position
+    white_king: Position,
+    en_pessant: Position
 }
 
 impl fmt::Display for Board {
@@ -190,6 +191,15 @@ impl Board {
 
         let piece: Piece = self.get_piece(new_move.start);
 
+        if piece.piece_type == PieceType::Pawn {
+            if piece.color == Color::White && new_move.end.y == 5 && new_move.end.down() == self.en_pessant {
+                self.put_piece(self.en_pessant, Piece{piece_type:PieceType::Empty,color:Color::None});
+            } else if piece.color == Color::Black && new_move.end.y == 2 && new_move.end.up() == self.en_pessant {
+                self.put_piece(self.en_pessant, Piece{piece_type:PieceType::Empty,color:Color::None});
+            }
+        }
+        self.en_pessant = Position{x:-1,y:-1};
+
         if piece.color == Color::None {
             return;
         }
@@ -198,8 +208,20 @@ impl Board {
         //    return;
         //}
 
-        self.put_piece(new_move.end, self.get_piece(new_move.start));
+        self.put_piece(new_move.end, piece);
         self.put_piece(new_move.start, Piece {piece_type: PieceType::Empty, color: Color::None});
+
+        if piece.piece_type == PieceType::Pawn {
+            if new_move.end.y == 7 && piece.color == Color::White {
+                self.put_piece(new_move.end, Piece{piece_type: PieceType::Queen, color: Color::White});
+            } else if new_move.end.y == 0 && piece.color == Color::Black {
+                self.put_piece(new_move.end, Piece{piece_type: PieceType::Queen, color: Color::Black});
+            } else if new_move.start.y == 1 && new_move.end.y == 3 && piece.color == Color::White {
+                self.en_pessant = new_move.end;
+            } else if new_move.start.y == 6 && new_move.end.y == 4 && piece.color == Color::Black {
+                self.en_pessant = new_move.end;
+            }
+        }
 
         if piece.piece_type == PieceType::King && (new_move.kingside_castlep() || new_move.queenside_castlep()) {
             if piece.color == Color::White && new_move.kingside_castlep() {
@@ -392,12 +414,12 @@ impl Board {
             }
             
             temp = temp.left();
-            if temp.validp() && self.get_piece(temp).color == Color::Black {
+            if temp.validp() && (self.get_piece(temp).color == Color::Black || temp.down() == self.en_pessant) {
                 self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
 
             temp = temp.right().right();
-            if temp.validp() && self.get_piece(temp).color == Color::Black {
+            if temp.validp() && (self.get_piece(temp).color == Color::Black || temp.down() == self.en_pessant) {
                 self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
         }
@@ -416,12 +438,12 @@ impl Board {
             }
             
             temp = temp.left();
-            if temp.validp() && self.get_piece(temp).color == Color::White {
+            if temp.validp() && (self.get_piece(temp).color == Color::White || temp.up() == self.en_pessant) {
                 self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
             }
 
             temp = temp.right().right();
-            if temp.validp() && self.get_piece(temp).color == Color::White {
+            if temp.validp() && (self.get_piece(temp).color == Color::White || temp.up() == self.en_pessant) {
                 self.check_and_add_move(Move {start: pos, end: temp}, piece.color, moves);
 
             }
@@ -501,7 +523,8 @@ fn make_board() -> Board {
         white_queenside: true,
         black_queenside: true,
         black_king: Position{y:7,x:4},
-        white_king: Position{y:0,x:4}
+        white_king: Position{y:0,x:4},
+        en_pessant: Position{x:-1,y:-1}
     };
 }
 

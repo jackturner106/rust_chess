@@ -1,6 +1,6 @@
 pub mod controller {
     
-    use crate::{player::players::{Human, AI, Player}, Board, Color, Move};
+    use crate::{player::players::{Human, Player, AI}, Board, Color, Move, Position};
     use std::time::{Duration, Instant};
 
     pub trait Controller {
@@ -22,7 +22,8 @@ pub mod controller {
             let mut now: Instant;
             let mut elapsed: Duration;
 
-            let mut p2: AI = AI::new();
+            //let mut p2: AI = AI::new();
+            let mut p2: Human=Human{};
             //let mut p1: AI = AI::new();
             //let mut p2: AI = AI::new();
             let mut p1: Human=Human{};
@@ -40,6 +41,8 @@ pub mod controller {
                 if current_turn == Color::White {
 
                     println!("White to move");
+                    let ep: Position = board.en_pessant;
+                    println!("{ep:?}");
 
                     //now = Instant::now();
                     current_move = p1.take_turn(board, Color::White);
@@ -50,7 +53,9 @@ pub mod controller {
                     current_turn = Color::Black;
                 } else {
                     println!("Black to move.");
-                    current_move = p2.take_turn_threaded(board, Color::Black);
+                    let ep: Position = board.en_pessant;
+                    println!("{ep:?}");
+                    current_move = p2.take_turn(board, Color::Black);
                     current_turn = Color::White;
                 }
 

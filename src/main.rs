@@ -1,6 +1,5 @@
 use std::{env, fmt};
 
-use player::players::{Human, Player};
 mod player;
 
 use controller::controller::{Controller, HumanGame};

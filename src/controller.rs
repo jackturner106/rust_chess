@@ -1,7 +1,6 @@
 pub mod controller {
     
-    use crate::{player::players::{Human, Player, AI}, Board, Color, Move, Position};
-    use std::time::{Duration, Instant};
+    use crate::{player::players::{Human, Player, AI}, Board, Color, Move};
 
     pub trait Controller {
         fn play_game(&self, board: Board) {

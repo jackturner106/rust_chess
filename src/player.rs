@@ -6,7 +6,6 @@ pub mod players {
     use crate::Piece;
     use crate::PieceType;
     use crate::Position;
-    use std::any::Any;
     use std::cmp;
     use std::io;
     use std::thread;
@@ -85,8 +84,8 @@ pub mod players {
     impl Player for AI {
         fn take_turn(&mut self, board: Board, color: Color) -> Move {
 
-            let mut now: Instant;
-            let mut elapsed: Duration;
+            let now: Instant;
+            let elapsed: Duration;
             now = Instant::now();
 
             let mut mv: Move;
@@ -321,7 +320,6 @@ pub mod players {
             let mut move_list: Vec<Move> = vec![];
             let mut temp_move_list: Vec<Move>;
             let mut temp_board: Board;
-            let mut mv: Move;
             let op: Color = color.opponent_color();
 
             let mut a = al;
@@ -428,8 +426,6 @@ pub mod players {
             let (my_double_p, my_rook_open, my_rook_semi, my_bishops) = AI::doubled_pawns(board, color);
             let (op_double_p, op_rook_open, op_rook_semi, op_bishops) = AI::doubled_pawns(board, color.opponent_color());
 
-            let total_points = my_points + op_points;
-
             score += my_points - op_points;
             score += ((op_double_p - my_double_p) as i16) * 3;
             score += ((my_rook_open - op_rook_open) as i16) * 40;
@@ -446,7 +442,7 @@ pub mod players {
             // after 4 pawns + 4 pieces captured middlegame, so 78 - 16 = 62
             // (n - 62) / 16
             let mut early_score = 0;
-            let mut middle_score = 0;
+            let middle_score = 0;
             let mut late_score = 0;
 
             let my_points = AI::points(board, color);
@@ -454,8 +450,6 @@ pub mod players {
 
             let my_ep = AI::early_points(board, color);
             let op_ep = AI::early_points(board, color.opponent_color());
-            let my_lp = AI::late_points(board, color);
-            let op_lp = AI::late_points(board, color.opponent_color());
 
             let (my_double_p, my_rook_open, my_rook_semi, my_bishops) = AI::doubled_pawns(board, color);
             let (op_double_p, op_rook_open, op_rook_semi, op_bishops) = AI::doubled_pawns(board, color.opponent_color());

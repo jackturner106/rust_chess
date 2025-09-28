@@ -1,16 +1,14 @@
 pub mod controller {
-    
-    use crate::{player::players::{Human, Player, AI}, Board, Color, Move};
+
+    use crate::{
+        players::engine::AI, players::user_input::Human, players::Player, Board, Color, Move,
+    };
 
     pub trait Controller {
-        fn play_game(&self, board: Board) {
-
-        }
+        fn play_game(&self, board: Board) {}
     }
 
-    pub struct HumanGame {
-
-    }
+    pub struct HumanGame {}
 
     impl Controller for HumanGame {
         fn play_game(&self, mut board: Board) {
@@ -22,10 +20,9 @@ pub mod controller {
             //let mut p2: Human=Human{};
             //let mut p1: AI = AI::new();
             let mut p1: AI = AI::new();
-            let mut p2: Human=Human{};
+            let mut p2: Human = Human {};
 
             while turns < 100 {
-
                 if board.checkmatep(current_turn) {
                     println!("Game Over");
                     return;
@@ -35,7 +32,6 @@ pub mod controller {
                 println!("{board}");
 
                 if current_turn == Color::White {
-
                     println!("White to move");
 
                     current_move = p1.take_turn_threaded(board, Color::White);
@@ -50,9 +46,7 @@ pub mod controller {
                 board.make_move(current_move);
 
                 turns += 1;
-                
             }
         }
     }
-
 }

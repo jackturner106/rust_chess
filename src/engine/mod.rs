@@ -1,10 +1,6 @@
-use crate::players;
-use crate::Board;
-use crate::Color;
-use crate::Move;
-use crate::Piece;
-use crate::PieceType;
-use crate::Position;
+mod evaluator;
+use crate::model::{Board, Color, Move, PieceType, Position};
+use crate::player;
 use std::cmp;
 
 use std::thread;
@@ -12,42 +8,11 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use std::time::Instant;
 
-const PAWN_POS: [[i16; 8]; 8] = [
-    [106, 106, 107, 108, 108, 107, 106, 106],
-    [105, 105, 106, 107, 107, 106, 105, 105],
-    [104, 104, 105, 106, 106, 105, 104, 104],
-    [103, 103, 104, 105, 105, 104, 103, 103],
-    [102, 102, 103, 104, 104, 103, 102, 102],
-    [101, 101, 102, 103, 103, 102, 101, 101],
-    [100, 100, 100, 100, 100, 100, 100, 100],
-    [100, 100, 100, 100, 100, 100, 100, 100],
-];
-const KNIGHT_POS: [[i16; 8]; 8] = [
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 330, 330, 330, 330, 300, 300],
-    [300, 300, 320, 320, 320, 320, 300, 300],
-    [300, 300, 310, 310, 310, 310, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-];
-const BISHOP_POS: [[i16; 8]; 8] = [
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-    [300, 313, 300, 300, 300, 300, 313, 300],
-    [300, 310, 312, 300, 300, 312, 310, 300],
-    [310, 300, 310, 311, 311, 310, 300, 310],
-    [300, 310, 300, 300, 300, 300, 310, 300],
-    [300, 300, 300, 300, 300, 300, 300, 300],
-];
-
 pub struct AI {
     pos_evaluated: u64,
 }
 
-impl players::Player for AI {
+impl player::Player for AI {
     fn take_turn(&mut self, board: Board, color: Color) -> Move {
         let now: Instant;
         let elapsed: Duration;
@@ -106,7 +71,7 @@ impl AI {
             .map(|mv| {
                 let mut temp_board = board.clone();
                 temp_board.make_move(*mv);
-                (temp_board, *mv, self.evaluate(temp_board, color))
+                (temp_board, *mv, evaluator::evaluate(temp_board, color))
             })
             .collect();
         mv_boards.sort_by(|mva, mvb| return mvb.2.cmp(&mva.2));
@@ -114,7 +79,7 @@ impl AI {
     }
 
     pub fn take_turn_threaded(&mut self, board: Board, color: Color) -> Move {
-        self.print_evaluate(board, color);
+        evaluator::print_evaluate(board, color);
 
         let now: Instant = Instant::now();
         let mut depth = 2;
@@ -247,9 +212,9 @@ impl AI {
             return if max { -32768 } else { 32767 };
         } else if depth == 0 {
             return if max {
-                self.evaluate(board, color)
+                evaluator::evaluate(board, color)
             } else {
-                self.evaluate(board, color) * -1
+                evaluator::evaluate(board, color) * -1
             };
         }
 
@@ -325,9 +290,9 @@ impl AI {
             };
         } else if depth == 0 {
             return if max {
-                (self.evaluate(board, color), vec![])
+                (evaluator::evaluate(board, color), vec![])
             } else {
-                (self.evaluate(board, color.opponent_color()), vec![])
+                (evaluator::evaluate(board, color.opponent_color()), vec![])
             };
         }
 
@@ -432,218 +397,5 @@ impl AI {
         let temp = move_list[i];
         move_list[i] = move_list[max_ind];
         move_list[max_ind] = temp;
-    }
-
-    fn evaluate(&self, board: Board, color: Color) -> i16 {
-        // Tapered evaluation: Chess boards start with 39 * 2 = 78 points
-        // after 4 pawns + 4 pieces captured middlegame, so 78 - 16 = 62
-        let mut score = 0;
-        let my_points = AI::points(board, color);
-        let op_points = AI::points(board, color.opponent_color());
-        let (my_double_p, my_rook_open, my_rook_semi, my_bishops) = AI::doubled_pawns(board, color);
-        let (op_double_p, op_rook_open, op_rook_semi, op_bishops) =
-            AI::doubled_pawns(board, color.opponent_color());
-
-        score += my_points - op_points;
-        score += ((op_double_p - my_double_p) as i16) * 3;
-        score += ((my_rook_open - op_rook_open) as i16) * 40;
-        score += ((my_rook_semi - op_rook_semi) as i16) * 10;
-
-        score += if my_bishops { 10 } else { 0 };
-        score -= if op_bishops { 10 } else { 0 };
-
-        return score;
-    }
-
-    fn print_evaluate(&self, board: Board, color: Color) -> i16 {
-        // Tapered evaluation: Chess boards start with 39 * 2 = 78 points
-        // after 4 pawns + 4 pieces captured middlegame, so 78 - 16 = 62
-        // (n - 62) / 16
-        let mut early_score = 0;
-        let middle_score = 0;
-        let mut late_score = 0;
-
-        let my_points = AI::points(board, color);
-        let op_points = AI::points(board, color.opponent_color());
-
-        let my_ep = AI::early_points(board, color);
-        let op_ep = AI::early_points(board, color.opponent_color());
-
-        let (my_double_p, my_rook_open, my_rook_semi, my_bishops) = AI::doubled_pawns(board, color);
-        let (op_double_p, op_rook_open, op_rook_semi, op_bishops) =
-            AI::doubled_pawns(board, color.opponent_color());
-        println!("{my_points}, {my_double_p}, {my_rook_open}, {my_rook_semi}, {my_bishops}");
-        println!("{op_points}, {op_double_p}, {op_rook_open}, {op_rook_semi}, {op_bishops}");
-
-        let total_points = my_points + op_points;
-
-        early_score += my_ep - op_ep;
-        early_score += ((op_double_p - my_double_p) as i16) * 3;
-        early_score += ((my_rook_open - op_rook_open) as i16) * 40;
-        early_score += ((my_rook_semi - op_rook_semi) as i16) * 10;
-        early_score += if my_bishops { 10 } else { 0 };
-        early_score -= if op_bishops { 10 } else { 0 };
-
-        late_score += my_ep - op_ep;
-        late_score += ((op_double_p - my_double_p) as i16) * 3;
-        late_score += ((my_rook_open - op_rook_open) as i16) * 40;
-        late_score += ((my_rook_semi - op_rook_semi) as i16) * 10;
-        late_score += if my_bishops { 10 } else { 0 };
-        late_score -= if op_bishops { 10 } else { 0 };
-
-        let score = ((early_score as f32 * total_points as f32 / 78.0).round()
-            + (early_score as f32 * (1.0 - (total_points as f32 / 78.0))).round())
-            as i16;
-
-        println!("Score: {score}");
-
-        return score;
-    }
-
-    // Returns: (number of doubled pawns, number of rooks on open files, number of rooks on semi open files,
-    //           bishop pair)
-    fn doubled_pawns(board: Board, color: Color) -> (u8, u8, u8, bool) {
-        let mut pawns: u8;
-        let mut opawns: u8;
-        let mut rooks: u8;
-        let mut piece: Piece;
-        let mut bishops: u8 = 0;
-        let mut total_doubled_pawns: u8 = 0;
-        let mut total_rooks_open: u8 = 0;
-        let mut total_rooks_semi: u8 = 0;
-
-        for col in 0..8 {
-            pawns = 0;
-            rooks = 0;
-            opawns = 0;
-            for row in 0..8 {
-                piece = board.get_piece(Position { x: col, y: row });
-                if piece.piece_type == PieceType::Pawn {
-                    if piece.color == color {
-                        pawns += 1;
-                    } else {
-                        opawns += 1;
-                    }
-                } else if piece.piece_type == PieceType::Rook && piece.color == color {
-                    rooks += 1;
-                } else if piece.piece_type == PieceType::Bishop && piece.color == color {
-                    bishops += 1;
-                }
-            }
-            total_doubled_pawns += if pawns > 1 { pawns } else { 0 };
-            if pawns + opawns == 1 {
-                total_rooks_semi += rooks;
-            } else if pawns + opawns == 0 {
-                total_rooks_open += rooks;
-            }
-        }
-        return (
-            total_doubled_pawns,
-            total_rooks_open,
-            total_rooks_semi,
-            bishops > 1,
-        );
-    }
-
-    fn points(board: Board, color: Color) -> i16 {
-        let mut points: i16 = 0;
-        let mut piece: Piece;
-        let mut pos: Position;
-
-        for i in 0..8 {
-            for l in 0..8 {
-                pos = Position { x: i, y: l };
-                piece = board.get_piece(pos);
-                if piece.color == color {
-                    points += AI::piece_points(piece.piece_type, pos, color);
-                }
-            }
-        }
-
-        return points;
-    }
-
-    fn early_points(board: Board, color: Color) -> i16 {
-        let mut points: i16 = 0;
-        let mut piece: Piece;
-        let mut pos: Position;
-
-        for i in 0..8 {
-            for l in 0..8 {
-                pos = Position { x: i, y: l };
-                piece = board.get_piece(pos);
-                if piece.color == color {
-                    points += AI::early_piece_points(piece.piece_type, pos, color);
-                }
-            }
-        }
-
-        return points;
-    }
-
-    fn late_points(board: Board, color: Color) -> i16 {
-        let mut points: i16 = 0;
-        let mut piece: Piece;
-        let mut pos: Position;
-
-        for i in 0..8 {
-            for l in 0..8 {
-                pos = Position { x: i, y: l };
-                piece = board.get_piece(pos);
-                if piece.color == color {
-                    points += AI::late_piece_points(piece.piece_type, pos, color);
-                }
-            }
-        }
-
-        return points;
-    }
-
-    fn piece_points(piece: PieceType, pos: Position, color: Color) -> i16 {
-        match piece {
-            PieceType::Bishop => return 300,
-            PieceType::Knight => return 300,
-            PieceType::Rook => return 500,
-            PieceType::King => return 0,
-            PieceType::Queen => return 900,
-            PieceType::Pawn => return 100,
-            PieceType::Empty => return 0,
-        };
-    }
-
-    fn early_piece_points(piece: PieceType, pos: Position, color: Color) -> i16 {
-        match piece {
-            PieceType::Bishop => return AI::get_pos_points(pos, color, BISHOP_POS),
-            PieceType::Knight => return AI::get_pos_points(pos, color, KNIGHT_POS),
-            PieceType::Rook => return 500,
-            PieceType::King => return 0,
-            PieceType::Queen => return 900,
-            PieceType::Pawn => return AI::get_pos_points(pos, color, PAWN_POS),
-            PieceType::Empty => return 0,
-        };
-    }
-
-    fn late_piece_points(piece: PieceType, pos: Position, color: Color) -> i16 {
-        match piece {
-            PieceType::Bishop => return AI::get_pos_points(pos, color, BISHOP_POS),
-            PieceType::Knight => return AI::get_pos_points(pos, color, KNIGHT_POS),
-            PieceType::Rook => return 500,
-            PieceType::King => return 0,
-            PieceType::Queen => return 900,
-            PieceType::Pawn => return AI::get_pos_points(pos, color, PAWN_POS),
-            PieceType::Empty => return 0,
-        };
-    }
-
-    fn get_pos_points(pos: Position, color: Color, grid: [[i16; 8]; 8]) -> i16 {
-        let mp: Position = if color == Color::Black {
-            pos
-        } else {
-            Position {
-                x: 7 - pos.x,
-                y: 7 - pos.y,
-            }
-        };
-        return grid[mp.y as usize][mp.x as usize];
     }
 }

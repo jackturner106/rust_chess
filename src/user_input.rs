@@ -1,12 +1,10 @@
-use crate::players;
-use crate::Board;
-use crate::Color;
-use crate::Move;
-use crate::Position;
-use std::io;
-pub struct Human {}
+use crate::model::{Board, Color, Move, Position};
+use crate::player;
 
-impl players::Player for Human {
+use std::io;
+pub(crate) struct Human {}
+
+impl player::Player for Human {
     fn take_turn(&mut self, board: Board, color: Color) -> Move {
         let mut my_move;
         let moves: Vec<Move> = board.get_all_moves(color);

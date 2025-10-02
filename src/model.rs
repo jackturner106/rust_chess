@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub(crate) enum Color {
     White,
     Black,
@@ -20,7 +20,7 @@ impl Color {
     }
 }
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub(crate) enum PieceType {
     Pawn,
     Rook,
@@ -31,7 +31,7 @@ pub(crate) enum PieceType {
     Empty,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Position {
     pub(crate) x: isize,
     pub(crate) y: isize,
@@ -135,7 +135,7 @@ impl Move {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub(crate) struct Piece {
     pub(crate) piece_type: PieceType,
     pub(crate) color: Color,
@@ -197,7 +197,7 @@ impl ToString for Piece {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(crate) struct Board {
     // Stored as an array of arrays. The first array corresponds to the first row.
     // This means Y IS FIRST!!

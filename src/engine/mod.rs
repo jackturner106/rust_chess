@@ -3,7 +3,6 @@ use crate::model::{Board, Color, Move, PieceType, Position};
 use crate::player;
 use std::cmp;
 
-use std::ops::Index;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -17,12 +16,47 @@ pub struct AI {
     pos_evaluated: u64,
 }
 
+pub struct MoveScore {
+    board: Board,
+    score: i16,
+}
+
+impl PartialEq for MoveScore {
+    fn eq(&self, other: &Self) -> bool {
+        return self.board == other.board && self.score == other.score;
+    }
+}
+
+impl Eq for MoveScore {}
+
+impl PartialOrd for MoveScore {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.score.partial_cmp(&other.score)
+    }
+}
+
+impl Ord for MoveScore {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        return self.score.cmp(&other.score);
+    }
+}
+
 impl player::Player for AI {
     fn take_turn(&mut self, board: Board, color: Color) -> Move {
-        let now: Instant = Instant::now();
+        if THREADED {
+            return self.take_turn_threaded(board, color);
+        }
+        return self.take_turn_private(board, color);
+    }
+}
+
+impl AI {
+    fn take_turn_threaded(&mut self, board: Board, color: Color) -> Move {
+        let start_time: Instant = Instant::now();
 
         let depth = 4;
         let mut moves = board.get_all_moves(color);
+        let mut new_moves: Vec<MoveScore> = Vec::new();
 
         if moves.len() == 1 {
             return moves[0];
@@ -33,36 +67,106 @@ impl player::Player for AI {
             };
         }
 
-        let mut threads: Vec<JoinHandle<(i16, Board)>> = Vec::new();
+        let mut threads: Vec<JoinHandle<(i16, Board, u64)>> = Vec::new();
 
-        while !moves.is_empty() {
-            if threads.len() < NUM_THREADS {
-                threads.push(self.new_thread(moves.pop().unwrap(), board, color, depth));
-            } else if threads.iter().any(|f| -> bool { f.is_finished() }) {
-                let index = threads
-                    .iter()
-                    .position(|f| -> bool { f.is_finished() })
-                    .unwrap();
-                let (score, board) = threads.remove(index).join().unwrap();
-                println!("Thread: {score}")
+        while start_time.elapsed() < TIME_LIMIT {
+            while !moves.is_empty() {
+                if threads.len() < NUM_THREADS {
+                    threads.push(self.new_thread(moves.pop().unwrap(), board, color, depth));
+                } else if threads.iter().any(|f| -> bool { f.is_finished() }) {
+                    let index = threads
+                        .iter()
+                        .position(|f| -> bool { f.is_finished() })
+                        .unwrap();
+                    let (score, board, pos_eval) = threads.remove(index).join().unwrap();
+                    self.pos_evaluated += pos_eval;
+
+                    let move_score = MoveScore {
+                        board: board,
+                        score: score,
+                    };
+                    match new_moves.binary_search(&move_score) {
+                        Ok(_) => {}
+                        Err(pos) => new_moves.insert(
+                            pos,
+                            MoveScore {
+                                board: board,
+                                score: score,
+                            },
+                        ),
+                    }
+                }
             }
+            // Explore board threaded...
         }
         return board.get_all_moves(color)[0];
     }
-}
 
-impl AI {
+    fn take_turn_private(&mut self, board: Board, color: Color) -> Move {
+        let now: Instant;
+        let elapsed: Duration;
+        now = Instant::now();
+
+        let mut mv: Move;
+        let mut score: i16 = -32768;
+        self.pos_evaluated = 0;
+        let mut temp_score: i16;
+
+        let moves = board.get_all_moves(color);
+
+        if moves.len() == 1 {
+            return moves[0];
+        } else if moves.len() == 0 {
+            return Move {
+                start: Position { x: 0, y: 0 },
+                end: Position { x: 0, y: 0 },
+            };
+        }
+
+        mv = moves[0];
+        let mut depth: u8 = 1;
+
+        while now.elapsed() < TIME_LIMIT {
+            for mov in &moves {
+                let mut nb = board.clone();
+                nb.make_move(*mov);
+                temp_score = self
+                    .alphabeta_trace(nb, depth, -32768, 32767, false, color.opponent_color())
+                    .0;
+
+                println!("{mov}: {temp_score}");
+
+                if temp_score > score {
+                    mv = *mov;
+                    score = temp_score;
+                }
+            }
+            depth += 1;
+        }
+
+        let evals = self.pos_evaluated;
+        elapsed = now.elapsed();
+        let per_second = (evals as f64) / elapsed.as_secs_f64();
+        println!("Evaluted {evals} positions in {elapsed:?} for a speed of {per_second} positions per second");
+        println!("Best Position: {score}");
+
+        return mv;
+    }
+
     fn new_thread(
         &self,
         move_: Move,
         board: Board,
         color: Color,
         depth: u8,
-    ) -> JoinHandle<(i16, Board)> {
+    ) -> JoinHandle<(i16, Board, u64)> {
         let mut ai = AI { pos_evaluated: 0 };
         let mut nb = board.clone();
         nb.make_move(move_);
-        return thread::spawn(move || ai.alphabeta_trace(nb, depth, -32768, 32767, false, color));
+        return thread::spawn(move || {
+            let (rscore, rboard) = ai.alphabeta_trace(nb, depth, -32768, 32767, false, color);
+            return (rscore, rboard, ai.pos_evaluated);
+        });
     }
 
     pub fn new() -> AI {

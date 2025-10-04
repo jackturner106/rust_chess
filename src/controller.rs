@@ -1,5 +1,5 @@
 use crate::engine::AI;
-use crate::model::{Board, Color, Move};
+use crate::model::{board::Board, color::Color, move_::Move};
 use crate::player::Player;
 use crate::user_input::Human;
 
@@ -23,7 +23,12 @@ impl Controller for HumanGame {
 
         while turns < 100 {
             if board.checkmatep(current_turn) {
-                println!("Game Over");
+                println!("Checkmate! Game Over");
+                return;
+            }
+
+            if board.stalematep(current_turn) {
+                println!("Stalemate! Game Over");
                 return;
             }
 

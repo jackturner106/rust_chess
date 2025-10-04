@@ -1,4 +1,4 @@
-use crate::model::{Board, Color, Move, Position};
+use crate::model::{board::Board, color::Color, move_::Move, position::Position};
 use crate::player;
 
 use std::io;

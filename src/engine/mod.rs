@@ -1,5 +1,8 @@
 mod evaluator;
-use crate::model::{Board, Color, Move, PieceType, Position};
+mod node;
+use crate::model::{
+    board::Board, color::Color, move_::Move, piece_type::PieceType, position::Position,
+};
 use crate::player;
 use std::cmp;
 

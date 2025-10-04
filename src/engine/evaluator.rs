@@ -1,4 +1,6 @@
-use crate::model::{Board, Color, Piece, PieceType, Position};
+use crate::model::{
+    board::Board, color::Color, piece::Piece, piece_type::PieceType, position::Position,
+};
 
 const PAWN_POS: [[i16; 8]; 8] = [
     [106, 106, 107, 108, 108, 107, 106, 106],

@@ -9,6 +9,7 @@ pub(crate) struct Board {
     // This means Y IS FIRST!!
     // board[y][x] is the correct way to access
     pub(crate) board: [[Piece; 8]; 8],
+    pub(crate) turn: Color,
     pub(crate) white_kingside: bool,
     pub(crate) white_queenside: bool,
     pub(crate) black_kingside: bool,
@@ -719,13 +720,18 @@ impl Board {
         return !self.checkp(kp) && self.get_all_moves(color).is_empty();
     }
 
-    // pub(crate) fn fen_string(&self) -> str {
-    //     for row in 7..=0 {
-    //         for col in 0..8 {
-    //             self.get_piece(Position { x: col, y: row })
-    //             if self.get_
-    //         }
-    //     }
-
-    // }
+    pub(crate) fn fen_string(&self) -> String {
+        let mut piece;
+        let mut fen = String::new();
+        for row in 7..=0 {
+            for col in 0..8 {
+                piece = self.get_piece(Position { x: col, y: row });
+                if piece.piece_type != PieceType::Empty {
+                    fen.push_str(&piece.fen_string());
+                }
+            }
+        }
+        fen.push_str(&self.turn.to_string());
+        return fen;
+    }
 }

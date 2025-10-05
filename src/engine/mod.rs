@@ -83,6 +83,7 @@ impl AI {
                         .unwrap();
                     let (score, board, pos_eval) = threads.remove(index).join().unwrap();
                     self.pos_evaluated += pos_eval;
+                    println!("Finished thread: {pos_eval} positions evaluated");
 
                     let move_score = MoveScore {
                         board: board,

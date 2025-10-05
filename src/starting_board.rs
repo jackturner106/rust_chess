@@ -278,6 +278,7 @@ pub(crate) fn make_board() -> Board {
                 },
             ],
         ],
+        turn: Color::White,
         white_kingside: true,
         black_kingside: true,
         white_queenside: true,
